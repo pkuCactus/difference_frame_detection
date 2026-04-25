@@ -84,6 +84,24 @@
 
 ### 当前版本默认不进行鉴权
 
+### 接口定义（当前版本）
+
+当前版本采用预定义的空接口实现：
+
+```cpp
+class ICameraCapabilityChecker {
+public:
+    virtual ~ICameraCapabilityChecker() = default;
+    
+    // 当前版本直接返回配置的支持状态，不实际调用相机接口
+    // 后续联调时再对接真实的 ONVIF/REST 接口
+    virtual bool isSupportDetection() = 0;
+};
+```
+
+- 默认实现：根据配置文件中的 `camera_detection.enabled` 字段直接返回支持或不支持
+- 后续联调时再实现真实的 ONVIF/REST 接口调用
+
 ## 7. 验收标准
 
 #### 场景 1：相机支持人体检测
