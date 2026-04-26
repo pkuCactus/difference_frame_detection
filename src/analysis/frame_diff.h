@@ -16,7 +16,7 @@ public:
     virtual void UpdateRef(const cv::Mat& frame) = 0;
     virtual bool HasRef() = 0;
     virtual cv::Mat GetRef() = 0;
-    virtual void reset() = 0;
+    virtual void Reset() = 0;
 };
 
 class FrameDiffAnalyzer : public IFrameDiffAnalyzer {
@@ -27,12 +27,12 @@ public:
     void UpdateRef(const cv::Mat& frame) override;
     bool HasRef() override;
     cv::Mat GetRef() override;
-    void reset() override;
+    void Reset() override;
     
     void SetBoxesForRoi(const std::vector<BoundingBox>& boxes);
     void SetThreshold(float threshold);
     
-    int getRefUpdateCount() const { return refUpdateCount_; }
+    int GetRefUpdateCount() const { return refUpdateCount_; }
     
 private:
     cv::Mat ExtractRoi(const cv::Mat& frame, const std::vector<BoundingBox>& boxes);

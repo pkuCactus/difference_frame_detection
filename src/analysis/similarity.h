@@ -10,7 +10,7 @@ public:
     virtual ~ISimilarityCalculator() = default;
     
     virtual float Calculate(const cv::Mat& frame1, const cv::Mat& frame2) = 0;
-    virtual std::string name() = 0;
+    virtual std::string Name() = 0;
 };
 
 class SsimCalculator : public ISimilarityCalculator {
@@ -18,11 +18,11 @@ public:
     SsimCalculator();
     
     float Calculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
-    std::string name() override { return "ssim"; }
+    std::string Name() override { return "ssim"; }
     
 private:
     float calculateSsimChannel(const cv::Mat& img1, const cv::Mat& img2);
-    cv::Mat createGaussianKernel(int Size, float sigma);
+    cv::Mat createGaussianKernel(int size, float sigma);
 };
 
 class PixelDiffCalculator : public ISimilarityCalculator {
@@ -30,7 +30,7 @@ public:
     PixelDiffCalculator();
     
     float Calculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
-    std::string name() override { return "pixel_diff"; }
+    std::string Name() override { return "pixel_diff"; }
     
 private:
     float calculatePixelDiffChannel(const cv::Mat& img1, const cv::Mat& img2);
@@ -41,7 +41,7 @@ public:
     HashCalculator();
     
     float Calculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
-    std::string name() override { return "phash"; }
+    std::string Name() override { return "phash"; }
     
 private:
     std::vector<uint8_t> computePHash(const cv::Mat& img);

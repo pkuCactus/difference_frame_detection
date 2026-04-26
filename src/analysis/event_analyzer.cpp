@@ -23,12 +23,12 @@ EventAnalyzer::~EventAnalyzer() {
 void EventAnalyzer::AnalyzeImage(const cv::Mat& frame,
                                    const std::vector<BoundingBox>& boxes) {
     if (frame.empty()) {
-        LOG_ERROR("Event analysis received Empty frame");
+        LOG_ERROR("Event analysis received empty frame");
         return;
     }
     
     if (boxes.empty()) {
-        LOG_WARN("Event analysis received Empty boxes, skipping");
+        LOG_WARN("Event analysis received empty boxes, skipping");
         return;
     }
     
@@ -52,12 +52,12 @@ void EventAnalyzer::AnalyzeImage(const cv::Mat& frame,
 void EventAnalyzer::AnalyzeVideo(const std::vector<cv::Mat>& frames,
                                    const std::vector<BoundingBox>& boxes) {
     if (frames.empty()) {
-        LOG_ERROR("Event analysis received Empty frames");
+        LOG_ERROR("Event analysis received empty frames");
         return;
     }
     
     if (boxes.empty()) {
-        LOG_WARN("Event analysis received Empty boxes, skipping");
+        LOG_WARN("Event analysis received empty boxes, skipping");
         return;
     }
     
@@ -128,7 +128,7 @@ VideoBuffer::VideoBuffer(int maxSize)
 
 void VideoBuffer::addFrame(const cv::Mat& frame, int frameId, int64_t timestamp) {
     if (frame.empty()) {
-        LOG_WARN("VideoBuffer received Empty frame");
+        LOG_WARN("VideoBuffer received empty frame");
         return;
     }
     

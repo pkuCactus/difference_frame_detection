@@ -76,6 +76,6 @@ TEST(PixelDiffCalculatorTest, Name) {
     SsimCalculator ssim;
     PixelDiffCalculator pixelDiff;
     
-    EXPECT_EQ(ssim.name(), "ssim");
-    EXPECT_EQ(pixelDiff.name(), "pixel_diff");
+    EXPECT_EQ(ssim.Name(), "ssim");
+    EXPECT_EQ(pixelDiff.Name(), "pixel_diff");
 }

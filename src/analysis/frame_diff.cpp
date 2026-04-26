@@ -62,18 +62,18 @@ bool FrameDiffAnalyzer::IsSimilar(const cv::Mat& current, const cv::Mat& ref) {
     
     float similarity = calculator_->Calculate(compareCurrent, compareRef);
     
-    bool IsSimilar = similarity >= threshold_;
+    bool isSimilar = similarity >= threshold_;
     
     LOG_INFO("Frame comparison: similarity=" + std::to_string(similarity) +
              ", threshold=" + std::to_string(threshold_) +
-             ", result=" + std::string(IsSimilar ? "similar" : "different"));
-    
-    return IsSimilar;
+             ", result=" + std::string(isSimilar ? "similar" : "different"));
+
+    return isSimilar;
 }
 
 void FrameDiffAnalyzer::UpdateRef(const cv::Mat& frame) {
     if (frame.empty()) {
-        LOG_WARN("Cannot Update ref with Empty frame");
+        LOG_WARN("Cannot update ref with empty frame");
         return;
     }
     
@@ -88,7 +88,7 @@ void FrameDiffAnalyzer::UpdateRef(const cv::Mat& frame) {
         refUpdateCount_++;
         LOG_INFO("Ref frame updated (default strategy), count=" + std::to_string(refUpdateCount_));
     } else {
-        LOG_WARN("Unknown Update strategy: " + updateStrategy_);
+        LOG_WARN("Unknown update strategy: " + updateStrategy_);
         refFrame_ = frame.clone();
         refUpdateCount_++;
     }
@@ -102,7 +102,7 @@ cv::Mat FrameDiffAnalyzer::GetRef() {
     return refFrame_;
 }
 
-void FrameDiffAnalyzer::reset() {
+void FrameDiffAnalyzer::Reset() {
     refFrame_.release();
     currentBoxes_.clear();
     refUpdateCount_ = 0;

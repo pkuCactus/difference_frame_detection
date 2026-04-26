@@ -89,7 +89,7 @@ TEST(FrameDiffAnalyzerTest, Reset) {
     cv::Mat frame(480, 640, CV_8UC3);
     analyzer.UpdateRef(frame);
     
-    analyzer.reset();
+    analyzer.Reset();
     
     EXPECT_FALSE(analyzer.HasRef());
 }
