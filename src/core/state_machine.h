@@ -42,7 +42,7 @@ struct PipelineStats {
                       avgDetectionTime(0), avgFrameDiffTime(0), 
                       avgTotalProcessTime(0) {}
     
-    std::string toString() const;
+    std::string ToString() const;
 };
 
 class StateMachine {
@@ -50,49 +50,49 @@ public:
     StateMachine(const Config& config);
     ~StateMachine();
     
-    void run();
-    void stop();
-    void pause();
-    void resume();
+    void Run();
+    void Stop();
+    void Pause();
+    void Resume();
     
-    State currentState() const;
+    State CurrentState() const;
     
-    bool isRunning() const { return running_; }
+    bool IsRunning() const { return running_; }
     bool isPaused() const { return paused_; }
-    int getFrameCount() const { return frameCounter_; }
-    int getEventCount() const;
+    int GetFrameCount() const { return frameCounter_; }
+    int GetEventCount() const;
     
-    PipelineStats getStats() const;
+    PipelineStats GetStats() const;
     PerformanceStats& getPerformanceStats() { return perfStats_; }
     
 private:
-    void transition(State newState);
+    void Transition(State newState);
     
-    void handleInit();
-    void handleConnecting();
-    void handleCheckCapability();
-    void handleCameraDetectionMode();
-    void handleLocalDetectionMode();
-    void handleDifferenceAnalysis();
-    void handleEventAnalysis();
-    void handleUpdateRef();
-    void handleReconnecting();
-    void handleError();
+    void HandleInit();
+    void HandleConnecting();
+    void HandleCheckCapability();
+    void HandleCameraDetectionMode();
+    void HandleLocalDetectionMode();
+    void HandleDifferenceAnalysis();
+    void HandleEventAnalysis();
+    void HandleUpdateRef();
+    void HandleReconnecting();
+    void HandleError();
     
-    bool checkConnection();
-    void processCameraDetection();
-    void processLocalDetection();
-    bool checkForPerson(const std::vector<BoundingBox>& boxes);
-    bool matchFrame(int frameId, int64_t timestamp, const CameraDetectionResult& result);
+    bool CheckConnection();
+    void ProcessCameraDetection();
+    void ProcessLocalDetection();
+    bool CheckForPerson(const std::vector<BoundingBox>& boxes);
+    bool MatchFrame(int frameId, int64_t timestamp, const CameraDetectionResult& result);
     
-    void initializeComponents();
-    void cleanupComponents();
+    void InitializeComponents();
+    void CleanupComponents();
     
-    void storeFrameForVideo(const cv::Mat& frame, int frameId, int64_t timestamp);
-    std::vector<FrameWithMeta> getVideoFrames();
+    void StoreFrameForVideo(const cv::Mat& frame, int frameId, int64_t timestamp);
+    std::vector<FrameWithMeta> GetVideoFrames();
     
-    void updateStats(bool hasPerson, bool isSimilar);
-    void logFrameInfo(int frameId, int64_t timestamp, const std::vector<BoundingBox>& boxes);
+    void UpdateStats(bool hasPerson, bool IsSimilar);
+    void LogFrameInfo(int frameId, int64_t timestamp, const std::vector<BoundingBox>& boxes);
     
     Config config_;
     State state_;

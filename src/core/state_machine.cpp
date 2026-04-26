@@ -7,7 +7,7 @@
 
 namespace diff_det {
 
-std::string PipelineStats::toString() const {
+std::string PipelineStats::ToString() const {
     std::ostringstream oss;
     oss << "=== Pipeline Statistics ===\n";
     oss << "Frames processed: " << totalFramesProcessed << "\n";
@@ -18,7 +18,7 @@ std::string PipelineStats::toString() const {
     oss << "Reconnection attempts: " << reconnectionAttempts << "\n";
     oss << "Avg detection time: " << std::fixed << std::setprecision(2) << avgDetectionTime << "ms\n";
     oss << "Avg frame diff time: " << avgFrameDiffTime << "ms\n";
-    oss << "Avg total process time: " << avgTotalProcessTime << "ms\n";
+    oss << "Avg total Process time: " << avgTotalProcessTime << "ms\n";
     return oss.str();
 }
 
@@ -41,13 +41,13 @@ StateMachine::StateMachine(const Config& config)
 }
 
 StateMachine::~StateMachine() {
-    stop();
-    cleanupComponents();
+    Stop();
+    CleanupComponents();
     
-    LOG_INFO(pipelineStats_.toString());
+    LOG_INFO(pipelineStats_.ToString());
 }
 
-void StateMachine::run() {
+void StateMachine::Run() {
     running_ = true;
     LOG_INFO("StateMachine started");
     
@@ -61,224 +61,224 @@ void StateMachine::run() {
         
         switch (state_) {
             case State::INIT:
-                handleInit();
+                HandleInit();
                 break;
             case State::CONNECTING:
-                handleConnecting();
+                HandleConnecting();
                 break;
             case State::CHECK_CAPABILITY:
-                handleCheckCapability();
+                HandleCheckCapability();
                 break;
             case State::CAMERA_DETECTION_MODE:
-                handleCameraDetectionMode();
+                HandleCameraDetectionMode();
                 break;
             case State::LOCAL_DETECTION_MODE:
-                handleLocalDetectionMode();
+                HandleLocalDetectionMode();
                 break;
             case State::DIFFERENCE_ANALYSIS:
-                handleDifferenceAnalysis();
+                HandleDifferenceAnalysis();
                 break;
             case State::EVENT_ANALYSIS:
-                handleEventAnalysis();
+                HandleEventAnalysis();
                 break;
             case State::UPDATE_REF:
-                handleUpdateRef();
+                HandleUpdateRef();
                 break;
             case State::RECONNECTING:
-                handleReconnecting();
+                HandleReconnecting();
                 break;
             case State::ERROR:
-                handleError();
+                HandleError();
                 break;
             default:
                 LOG_ERROR("Unknown state: " + std::to_string(static_cast<int>(state_)));
-                transition(State::ERROR);
+                Transition(State::ERROR);
                 break;
         }
     }
     
     LOG_INFO("StateMachine stopped");
-    LOG_INFO(pipelineStats_.toString());
+    LOG_INFO(pipelineStats_.ToString());
 }
 
-void StateMachine::stop() {
+void StateMachine::Stop() {
     running_ = false;
     paused_ = false;
 }
 
-void StateMachine::pause() {
+void StateMachine::Pause() {
     paused_ = true;
     LOG_INFO("StateMachine paused");
 }
 
-void StateMachine::resume() {
+void StateMachine::Resume() {
     paused_ = false;
     LOG_INFO("StateMachine resumed");
 }
 
-State StateMachine::currentState() const {
+State StateMachine::CurrentState() const {
     return state_;
 }
 
-int StateMachine::getEventCount() const {
+int StateMachine::GetEventCount() const {
     if (eventAnalyzer_) {
-        return eventAnalyzer_->getEventCount();
+        return eventAnalyzer_->GetEventCount();
     }
     return 0;
 }
 
-PipelineStats StateMachine::getStats() const {
+PipelineStats StateMachine::GetStats() const {
     return pipelineStats_;
 }
 
-void StateMachine::transition(State newState) {
-    LOG_INFO("State transition: " + std::string(stateToString(state_)) + 
-             " -> " + std::string(stateToString(newState)));
+void StateMachine::Transition(State newState) {
+    LOG_INFO("State Transition: " + std::string(StateToString(state_)) + 
+             " -> " + std::string(StateToString(newState)));
     state_ = newState;
-    perfStats_.incrementCounter("state_transitions");
+    perfStats_.IncrementCounter("state_transitions");
 }
 
-void StateMachine::handleInit() {
+void StateMachine::HandleInit() {
     LOG_INFO("Initializing StateMachine...");
     
-    Logger::getInstance().init(config_.logging.filePath, config_.logging.level);
+    Logger::GetInstance().Init(config_.logging.filePath, config_.logging.level);
     
-    initializeComponents();
+    InitializeComponents();
     
     int maxBufferFrames = static_cast<int>(config_.eventAnalysis.videoDurationSec * 30) + 10;
     videoBuffer_ = std::make_unique<VideoFrameBuffer>(maxBufferFrames);
     
-    transition(State::CONNECTING);
+    Transition(State::CONNECTING);
 }
 
-void StateMachine::handleConnecting() {
+void StateMachine::HandleConnecting() {
     LOG_INFO("Connecting to RTSP: " + config_.rtsp.url);
     
-    perfStats_.startTimer("rtsp_connect");
+    perfStats_.StartTimer("rtsp_connect");
     
-    if (checkConnection()) {
-        perfStats_.endTimer("rtsp_connect");
+    if (CheckConnection()) {
+        perfStats_.EndTimer("rtsp_connect");
         
-        double fps = rtspClient_->getFps();
-        int width = rtspClient_->getWidth();
-        int height = rtspClient_->getHeight();
+        double fps = rtspClient_->GetFps();
+        int Width = rtspClient_->GetWidth();
+        int Height = rtspClient_->GetHeight();
         
         LOG_INFO("RTSP connected: fps=" + std::to_string(fps) +
-                 ", resolution=" + std::to_string(width) + "x" + std::to_string(height));
+                 ", resolution=" + std::to_string(Width) + "x" + std::to_string(Height));
         
-        transition(State::CHECK_CAPABILITY);
+        Transition(State::CHECK_CAPABILITY);
     } else {
-        perfStats_.endTimer("rtsp_connect");
+        perfStats_.EndTimer("rtsp_connect");
         LOG_WARN("RTSP connection failed");
-        transition(State::RECONNECTING);
+        Transition(State::RECONNECTING);
     }
 }
 
-void StateMachine::handleCheckCapability() {
+void StateMachine::HandleCheckCapability() {
     LOG_INFO("Checking camera detection capability");
     
     if (!capabilityChecker_) {
         LOG_ERROR("CapabilityChecker not initialized");
-        transition(State::ERROR);
+        Transition(State::ERROR);
         return;
     }
     
-    perfStats_.startTimer("capability_check");
-    CapabilityResult result = capabilityChecker_->check(config_.cameraDetection);
-    perfStats_.endTimer("capability_check");
+    perfStats_.StartTimer("capability_check");
+    CapabilityResult result = capabilityChecker_->Check(config_.cameraDetection);
+    perfStats_.EndTimer("capability_check");
     
     if (result.supported) {
         useCameraDetection_ = true;
         
         if (detectionReader_) {
-            detectionReader_->init(config_.cameraDetection);
+            detectionReader_->Init(config_.cameraDetection);
         }
         
         LOG_INFO("camera_id=" + config_.cameraDetection.cameraId + 
                  ", detection_supported=true, mode=camera_detection");
-        transition(State::CAMERA_DETECTION_MODE);
+        Transition(State::CAMERA_DETECTION_MODE);
     } else {
         useCameraDetection_ = false;
         LOG_INFO("camera_id=" + config_.cameraDetection.cameraId + 
                  ", detection_supported=false, reason=" + result.reason + 
                  ", mode=local_detection");
-        transition(State::LOCAL_DETECTION_MODE);
+        Transition(State::LOCAL_DETECTION_MODE);
     }
 }
 
-void StateMachine::handleCameraDetectionMode() {
-    processCameraDetection();
+void StateMachine::HandleCameraDetectionMode() {
+    ProcessCameraDetection();
 }
 
-void StateMachine::handleLocalDetectionMode() {
-    processLocalDetection();
+void StateMachine::HandleLocalDetectionMode() {
+    ProcessLocalDetection();
 }
 
-void StateMachine::handleDifferenceAnalysis() {
+void StateMachine::HandleDifferenceAnalysis() {
     if (!frameDiffAnalyzer_) {
         LOG_ERROR("FrameDiffAnalyzer not initialized");
-        transition(State::ERROR);
+        Transition(State::ERROR);
         return;
     }
     
-    perfStats_.startTimer("frame_diff_analysis");
+    perfStats_.StartTimer("frame_diff_analysis");
     
-    frameDiffAnalyzer_->setBoxesForRoi(currentBoxes_);
+    frameDiffAnalyzer_->SetBoxesForRoi(currentBoxes_);
     
-    if (!frameDiffAnalyzer_->hasRef()) {
-        perfStats_.endTimer("frame_diff_analysis");
+    if (!frameDiffAnalyzer_->HasRef()) {
+        perfStats_.EndTimer("frame_diff_analysis");
         
         LOG_INFO("No Ref frame, first frame must enter event analysis");
         hasDifference_ = true;
-        transition(State::EVENT_ANALYSIS);
+        Transition(State::EVENT_ANALYSIS);
         return;
     }
     
-    cv::Mat refFrame = frameDiffAnalyzer_->getRef();
-    bool isSimilar = frameDiffAnalyzer_->isSimilar(currentFrame_, refFrame);
+    cv::Mat refFrame = frameDiffAnalyzer_->GetRef();
+    bool IsSimilar = frameDiffAnalyzer_->IsSimilar(currentFrame_, refFrame);
     
-    perfStats_.endTimer("frame_diff_analysis");
+    perfStats_.EndTimer("frame_diff_analysis");
     
-    updateStats(!currentBoxes_.empty(), isSimilar);
+    UpdateStats(!currentBoxes_.empty(), IsSimilar);
     
-    if (isSimilar) {
+    if (IsSimilar) {
         LOG_INFO("Frame similar to Ref, skip event analysis");
         hasDifference_ = false;
         pipelineStats_.framesSimilar++;
         
         if (config_.refFrame.updateStrategy == "newest" && !currentBoxes_.empty()) {
-            frameDiffAnalyzer_->updateRef(currentFrame_);
+            frameDiffAnalyzer_->UpdateRef(currentFrame_);
         }
         
         if (useCameraDetection_) {
-            transition(State::CAMERA_DETECTION_MODE);
+            Transition(State::CAMERA_DETECTION_MODE);
         } else {
-            transition(State::LOCAL_DETECTION_MODE);
+            Transition(State::LOCAL_DETECTION_MODE);
         }
     } else {
         LOG_INFO("Frame different from Ref, enter event analysis");
         hasDifference_ = true;
         pipelineStats_.framesDifferent++;
-        transition(State::EVENT_ANALYSIS);
+        Transition(State::EVENT_ANALYSIS);
     }
 }
 
-void StateMachine::handleEventAnalysis() {
+void StateMachine::HandleEventAnalysis() {
     if (!eventAnalyzer_) {
         LOG_ERROR("EventAnalyzer not initialized");
-        transition(State::ERROR);
+        Transition(State::ERROR);
         return;
     }
     
-    perfStats_.startTimer("event_analysis");
+    perfStats_.StartTimer("event_analysis");
     
     LOG_INFO("Entering event analysis, frameId=" + std::to_string(currentFrameId_) +
              ", boxes=" + std::to_string(currentBoxes_.size()));
     
     if (config_.eventAnalysis.mode == "image") {
-        eventAnalyzer_->analyzeImage(currentFrame_, currentBoxes_);
+        eventAnalyzer_->AnalyzeImage(currentFrame_, currentBoxes_);
     } else {
-        std::vector<FrameWithMeta> frames = getVideoFrames();
+        std::vector<FrameWithMeta> frames = GetVideoFrames();
         if (frames.empty()) {
             FrameWithMeta meta(currentFrame_, currentFrameId_, currentTimestamp_);
             frames.push_back(meta);
@@ -288,38 +288,38 @@ void StateMachine::handleEventAnalysis() {
         for (auto& f : frames) {
             frameImages.push_back(f.frame);
         }
-        eventAnalyzer_->analyzeVideo(frameImages, currentBoxes_);
+        eventAnalyzer_->AnalyzeVideo(frameImages, currentBoxes_);
     }
     
-    perfStats_.endTimer("event_analysis");
+    perfStats_.EndTimer("event_analysis");
     
     pipelineStats_.eventsGenerated++;
-    perfStats_.incrementCounter("events_generated");
+    perfStats_.IncrementCounter("events_generated");
     
-    transition(State::UPDATE_REF);
+    Transition(State::UPDATE_REF);
 }
 
-void StateMachine::handleUpdateRef() {
+void StateMachine::HandleUpdateRef() {
     if (!frameDiffAnalyzer_) {
         LOG_ERROR("FrameDiffAnalyzer not initialized");
-        transition(State::ERROR);
+        Transition(State::ERROR);
         return;
     }
     
     LOG_INFO("Updating Ref frame");
     
     if (config_.refFrame.updateStrategy == "default" || hasDifference_) {
-        frameDiffAnalyzer_->updateRef(currentFrame_);
+        frameDiffAnalyzer_->UpdateRef(currentFrame_);
     }
     
     if (useCameraDetection_) {
-        transition(State::CAMERA_DETECTION_MODE);
+        Transition(State::CAMERA_DETECTION_MODE);
     } else {
-        transition(State::LOCAL_DETECTION_MODE);
+        Transition(State::LOCAL_DETECTION_MODE);
     }
 }
 
-void StateMachine::handleReconnecting() {
+void StateMachine::HandleReconnecting() {
     auto now = std::chrono::system_clock::now();
     int64_t currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
         now.time_since_epoch()).count();
@@ -333,139 +333,139 @@ void StateMachine::handleReconnecting() {
     reconnectAttempts_++;
     pipelineStats_.reconnectionAttempts++;
     
-    LOG_WARN("Attempting to reconnect (" + std::to_string(reconnectAttempts_) + " attempts)...");
+    LOG_WARN("Attempting to Reconnect (" + std::to_string(reconnectAttempts_) + " attempts)...");
     
-    if (rtspClient_ && rtspClient_->reconnect()) {
+    if (rtspClient_ && rtspClient_->Reconnect()) {
         LOG_INFO("Reconnected successfully after " + std::to_string(reconnectAttempts_) + " attempts");
         reconnectAttempts_ = 0;
-        transition(State::CHECK_CAPABILITY);
+        Transition(State::CHECK_CAPABILITY);
     } else {
         LOG_ERROR("Reconnect failed, will retry after " + 
                   std::to_string(config_.rtsp.reconnectIntervalMs) + "ms");
     }
 }
 
-void StateMachine::handleError() {
+void StateMachine::HandleError() {
     LOG_ERROR("Error state encountered");
-    LOG_INFO(pipelineStats_.toString());
-    cleanupComponents();
+    LOG_INFO(pipelineStats_.ToString());
+    CleanupComponents();
     running_ = false;
 }
 
-bool StateMachine::checkConnection() {
+bool StateMachine::CheckConnection() {
     if (!rtspClient_) {
         LOG_ERROR("RtspClient not initialized");
         return false;
     }
     
-    return rtspClient_->connect(config_.rtsp.url);
+    return rtspClient_->Connect(config_.rtsp.url);
 }
 
-void StateMachine::processCameraDetection() {
+void StateMachine::ProcessCameraDetection() {
     if (!rtspClient_ || !detectionReader_) {
         LOG_ERROR("Components not initialized for camera detection mode");
-        transition(State::ERROR);
+        Transition(State::ERROR);
         return;
     }
     
-    if (!rtspClient_->isConnected()) {
+    if (!rtspClient_->IsConnected()) {
         LOG_WARN("RTSP disconnected in camera detection mode");
-        transition(State::RECONNECTING);
+        Transition(State::RECONNECTING);
         return;
     }
     
-    perfStats_.startTimer("camera_detection_fetch");
-    CameraDetectionResult result = detectionReader_->getDetectionResult();
-    perfStats_.endTimer("camera_detection_fetch");
+    perfStats_.StartTimer("camera_detection_fetch");
+    CameraDetectionResult result = detectionReader_->GetDetectionResult();
+    perfStats_.EndTimer("camera_detection_fetch");
     
-    if (!rtspClient_->getFrame(currentFrame_, currentFrameId_, currentTimestamp_)) {
+    if (!rtspClient_->GetFrame(currentFrame_, currentFrameId_, currentTimestamp_)) {
         LOG_WARN("Failed to get frame in camera detection mode");
-        transition(State::RECONNECTING);
+        Transition(State::RECONNECTING);
         return;
     }
     
-    perfStats_.startTimer("camera_frame_decode");
-    storeFrameForVideo(currentFrame_, currentFrameId_, currentTimestamp_);
-    perfStats_.endTimer("camera_frame_decode");
+    perfStats_.StartTimer("camera_frame_decode");
+    StoreFrameForVideo(currentFrame_, currentFrameId_, currentTimestamp_);
+    perfStats_.EndTimer("camera_frame_decode");
     
     if (result.objNum > 0) {
-        if (matchFrame(currentFrameId_, currentTimestamp_, result)) {
+        if (MatchFrame(currentFrameId_, currentTimestamp_, result)) {
             currentBoxes_ = result.objs;
             
-            perfStats_.incrementCounter("camera_detections_with_person", result.objNum);
+            perfStats_.IncrementCounter("camera_detections_with_person", result.objNum);
             pipelineStats_.framesWithPerson++;
             
-            logFrameInfo(currentFrameId_, currentTimestamp_, currentBoxes_);
+            LogFrameInfo(currentFrameId_, currentTimestamp_, currentBoxes_);
             
-            transition(State::DIFFERENCE_ANALYSIS);
+            Transition(State::DIFFERENCE_ANALYSIS);
         } else {
             LOG_WARN("Frame match failed, continue");
-            perfStats_.incrementCounter("frame_match_failures");
+            perfStats_.IncrementCounter("frame_match_failures");
         }
     } else {
         currentBoxes_.clear();
-        logFrameInfo(currentFrameId_, currentTimestamp_, currentBoxes_);
+        LogFrameInfo(currentFrameId_, currentTimestamp_, currentBoxes_);
     }
     
     pipelineStats_.totalFramesProcessed++;
     frameCounter_++;
 }
 
-void StateMachine::processLocalDetection() {
+void StateMachine::ProcessLocalDetection() {
     if (!rtspClient_ || !detector_) {
         LOG_ERROR("Components not initialized for local detection mode");
-        transition(State::ERROR);
+        Transition(State::ERROR);
         return;
     }
     
-    if (!rtspClient_->isConnected()) {
+    if (!rtspClient_->IsConnected()) {
         LOG_WARN("RTSP disconnected in local detection mode");
-        transition(State::RECONNECTING);
+        Transition(State::RECONNECTING);
         return;
     }
     
     if (frameCounter_ % config_.localDetection.detectInterval != 0) {
         frameCounter_++;
         
-        if (!rtspClient_->getFrame(currentFrame_, currentFrameId_, currentTimestamp_)) {
+        if (!rtspClient_->GetFrame(currentFrame_, currentFrameId_, currentTimestamp_)) {
             LOG_WARN("Failed to get frame in skip mode");
-            transition(State::RECONNECTING);
+            Transition(State::RECONNECTING);
             return;
         }
         
-        storeFrameForVideo(currentFrame_, currentFrameId_, currentTimestamp_);
+        StoreFrameForVideo(currentFrame_, currentFrameId_, currentTimestamp_);
         currentBoxes_.clear();
         
-        perfStats_.incrementCounter("frames_skipped");
+        perfStats_.IncrementCounter("frames_skipped");
         return;
     }
     
-    if (!rtspClient_->getFrame(currentFrame_, currentFrameId_, currentTimestamp_)) {
+    if (!rtspClient_->GetFrame(currentFrame_, currentFrameId_, currentTimestamp_)) {
         LOG_WARN("Failed to get frame in local detection mode");
-        transition(State::RECONNECTING);
+        Transition(State::RECONNECTING);
         return;
     }
     
-    storeFrameForVideo(currentFrame_, currentFrameId_, currentTimestamp_);
+    StoreFrameForVideo(currentFrame_, currentFrameId_, currentTimestamp_);
     
-    currentBoxes_ = detector_->detect(currentFrame_);
+    currentBoxes_ = detector_->Detect(currentFrame_);
     
     if (config_.tracker.enabled && !currentBoxes_.empty()) {
         if (!tracker_) {
             LOG_ERROR("Tracker not initialized but enabled in config");
         } else {
-            perfStats_.startTimer("tracker_update");
-            currentTracks_ = tracker_->update(currentFrame_, currentBoxes_);
-            perfStats_.endTimer("tracker_update");
+            perfStats_.StartTimer("tracker_update");
+            currentTracks_ = tracker_->Update(currentFrame_, currentBoxes_);
+            perfStats_.EndTimer("tracker_update");
             
             currentBoxes_.clear();
             for (const auto& track : currentTracks_) {
                 if (track.state == TrackState::Tracked) {
-                    currentBoxes_.push_back(track.toBoundingBox());
+                    currentBoxes_.push_back(track.ToBoundingBox());
                 }
             }
             
-            perfStats_.incrementCounter("tracked_objects", currentBoxes_.size());
+            perfStats_.IncrementCounter("tracked_objects", currentBoxes_.size());
         }
     }
     
@@ -474,33 +474,33 @@ void StateMachine::processLocalDetection() {
     
     if (!currentBoxes_.empty()) {
         pipelineStats_.framesWithPerson++;
-        logFrameInfo(currentFrameId_, currentTimestamp_, currentBoxes_);
-        transition(State::DIFFERENCE_ANALYSIS);
+        LogFrameInfo(currentFrameId_, currentTimestamp_, currentBoxes_);
+        Transition(State::DIFFERENCE_ANALYSIS);
     } else {
-        logFrameInfo(currentFrameId_, currentTimestamp_, currentBoxes_);
+        LogFrameInfo(currentFrameId_, currentTimestamp_, currentBoxes_);
     }
     
-    pipelineStats_.avgDetectionTime = detector_->getLastDetectTime();
+    pipelineStats_.avgDetectionTime = detector_->GetLastDetectTime();
 }
 
-bool StateMachine::checkForPerson(const std::vector<BoundingBox>& boxes) {
+bool StateMachine::CheckForPerson(const std::vector<BoundingBox>& boxes) {
     return !boxes.empty();
 }
 
-bool StateMachine::matchFrame(int frameId, int64_t timestamp, 
+bool StateMachine::MatchFrame(int frameId, int64_t timestamp, 
                                const CameraDetectionResult& result) {
     if (!detectionReader_) {
         return false;
     }
     
-    perfStats_.startTimer("frame_matching");
-    bool matched = detectionReader_->matchFrame(frameId, timestamp, result);
-    perfStats_.endTimer("frame_matching");
+    perfStats_.StartTimer("frame_matching");
+    bool matched = detectionReader_->MatchFrame(frameId, timestamp, result);
+    perfStats_.EndTimer("frame_matching");
     
     return matched;
 }
 
-void StateMachine::initializeComponents() {
+void StateMachine::InitializeComponents() {
     LOG_INFO("Initializing components...");
     
     rtspClient_ = std::make_unique<RtspClient>();
@@ -512,7 +512,7 @@ void StateMachine::initializeComponents() {
     detectionReader_ = std::make_unique<CameraDetectionReader>();
     
     detector_ = std::make_unique<RknnDetector>(config_.localDetection);
-    detector_->init();
+    detector_->Init();
     detector_->setPerformanceStats(&perfStats_);
     
     if (config_.tracker.enabled) {
@@ -526,15 +526,15 @@ void StateMachine::initializeComponents() {
     LOG_INFO("All components initialized successfully");
 }
 
-void StateMachine::cleanupComponents() {
+void StateMachine::CleanupComponents() {
     LOG_INFO("Cleaning up components...");
     
     if (rtspClient_) {
-        rtspClient_->disconnect();
+        rtspClient_->Disconnect();
     }
     
     if (videoBuffer_) {
-        videoBuffer_->clear();
+        videoBuffer_->Clear();
     }
     
     currentBoxes_.clear();
@@ -544,36 +544,36 @@ void StateMachine::cleanupComponents() {
     LOG_INFO("Components cleaned up");
 }
 
-void StateMachine::storeFrameForVideo(const cv::Mat& frame, int frameId, int64_t timestamp) {
+void StateMachine::StoreFrameForVideo(const cv::Mat& frame, int frameId, int64_t timestamp) {
     if (config_.eventAnalysis.mode == "video" && videoBuffer_) {
-        videoBuffer_->addFrame(frame, frameId, timestamp);
+        videoBuffer_->AddFrame(frame, frameId, timestamp);
     }
 }
 
-std::vector<FrameWithMeta> StateMachine::getVideoFrames() {
+std::vector<FrameWithMeta> StateMachine::GetVideoFrames() {
     if (!videoBuffer_) {
         return {};
     }
     
     int frameCount = static_cast<int>(config_.eventAnalysis.videoDurationSec * 30);
-    return videoBuffer_->getFramesWithMeta(frameCount);
+    return videoBuffer_->GetFramesWithMeta(frameCount);
 }
 
-void StateMachine::updateStats(bool hasPerson, bool isSimilar) {
-    perfStats_.incrementCounter("total_frames_processed");
+void StateMachine::UpdateStats(bool hasPerson, bool IsSimilar) {
+    perfStats_.IncrementCounter("total_frames_processed");
     
     if (hasPerson) {
-        perfStats_.incrementCounter("frames_with_person");
+        perfStats_.IncrementCounter("frames_with_person");
     }
     
-    if (isSimilar) {
-        perfStats_.incrementCounter("frames_similar");
+    if (IsSimilar) {
+        perfStats_.IncrementCounter("frames_similar");
     } else {
-        perfStats_.incrementCounter("frames_different");
+        perfStats_.IncrementCounter("frames_different");
     }
 }
 
-void StateMachine::logFrameInfo(int frameId, int64_t timestamp, 
+void StateMachine::LogFrameInfo(int frameId, int64_t timestamp, 
                                   const std::vector<BoundingBox>& boxes) {
     std::ostringstream oss;
     oss << "Frame " << frameId << " (ts=" << timestamp << "): ";

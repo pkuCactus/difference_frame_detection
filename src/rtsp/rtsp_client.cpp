@@ -16,10 +16,10 @@ RtspClient::RtspClient()
 }
 
 RtspClient::~RtspClient() {
-    disconnect();
+    Disconnect();
 }
 
-bool RtspClient::connect(const std::string& url) {
+bool RtspClient::Connect(const std::string& url) {
     url_ = url;
     LOG_INFO("Connecting to RTSP: " + url);
     
@@ -49,8 +49,8 @@ bool RtspClient::connect(const std::string& url) {
         connected_ = true;
         
         LOG_INFO("RTSP connected successfully: fps=" + std::to_string(fps_) +
-                 ", width=" + std::to_string(width_) +
-                 ", height=" + std::to_string(height_));
+                 ", Width=" + std::to_string(width_) +
+                 ", Height=" + std::to_string(height_));
         
         return true;
         
@@ -61,7 +61,7 @@ bool RtspClient::connect(const std::string& url) {
     }
 }
 
-void RtspClient::disconnect() {
+void RtspClient::Disconnect() {
     if (cap_.isOpened()) {
         cap_.release();
     }
@@ -69,12 +69,12 @@ void RtspClient::disconnect() {
     LOG_INFO("Disconnected from RTSP");
 }
 
-bool RtspClient::isConnected() {
+bool RtspClient::IsConnected() {
     return connected_ && cap_.isOpened();
 }
 
-bool RtspClient::getFrame(cv::Mat& frame, int& frameId, int64_t& timestamp) {
-    if (!isConnected()) {
+bool RtspClient::GetFrame(cv::Mat& frame, int& frameId, int64_t& timestamp) {
+    if (!IsConnected()) {
         LOG_WARN("RTSP not connected");
         return false;
     }
@@ -112,14 +112,14 @@ bool RtspClient::getFrame(cv::Mat& frame, int& frameId, int64_t& timestamp) {
     }
 }
 
-void RtspClient::setFrameCallback(FrameCallback callback) {
+void RtspClient::SetFrameCallback(FrameCallback callback) {
     callback_ = callback;
 }
 
-bool RtspClient::reconnect() {
-    LOG_WARN("Attempting to reconnect to RTSP: " + url_);
+bool RtspClient::Reconnect() {
+    LOG_WARN("Attempting to Reconnect to RTSP: " + url_);
     
-    disconnect();
+    Disconnect();
     
     int maxRetries = 5;
     int retryDelayMs = 1000;
@@ -127,7 +127,7 @@ bool RtspClient::reconnect() {
     for (int i = 0; i < maxRetries; ++i) {
         LOG_INFO("Reconnect attempt " + std::to_string(i + 1) + "/" + std::to_string(maxRetries));
         
-        if (connect(url_)) {
+        if (Connect(url_)) {
             LOG_INFO("Reconnected successfully");
             return true;
         }
@@ -135,19 +135,19 @@ bool RtspClient::reconnect() {
         std::this_thread::sleep_for(std::chrono::milliseconds(retryDelayMs));
     }
     
-    LOG_ERROR("Failed to reconnect after " + std::to_string(maxRetries) + " attempts");
+    LOG_ERROR("Failed to Reconnect after " + std::to_string(maxRetries) + " attempts");
     return false;
 }
 
-double RtspClient::getFps() const {
+double RtspClient::GetFps() const {
     return fps_;
 }
 
-int RtspClient::getWidth() const {
+int RtspClient::GetWidth() const {
     return width_;
 }
 
-int RtspClient::getHeight() const {
+int RtspClient::GetHeight() const {
     return height_;
 }
 

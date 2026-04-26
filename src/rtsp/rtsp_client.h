@@ -13,12 +13,12 @@ public:
     
     virtual ~IRtspClient() = default;
     
-    virtual bool connect(const std::string& url) = 0;
-    virtual void disconnect() = 0;
-    virtual bool isConnected() = 0;
-    virtual bool getFrame(cv::Mat& frame, int& frameId, int64_t& timestamp) = 0;
-    virtual void setFrameCallback(FrameCallback callback) = 0;
-    virtual bool reconnect() = 0;
+    virtual bool Connect(const std::string& url) = 0;
+    virtual void Disconnect() = 0;
+    virtual bool IsConnected() = 0;
+    virtual bool GetFrame(cv::Mat& frame, int& frameId, int64_t& timestamp) = 0;
+    virtual void SetFrameCallback(FrameCallback callback) = 0;
+    virtual bool Reconnect() = 0;
 };
 
 class RtspClient : public IRtspClient {
@@ -26,16 +26,16 @@ public:
     RtspClient();
     ~RtspClient();
     
-    bool connect(const std::string& url) override;
-    void disconnect() override;
-    bool isConnected() override;
-    bool getFrame(cv::Mat& frame, int& frameId, int64_t& timestamp) override;
-    void setFrameCallback(FrameCallback callback) override;
-    bool reconnect() override;
+    bool Connect(const std::string& url) override;
+    void Disconnect() override;
+    bool IsConnected() override;
+    bool GetFrame(cv::Mat& frame, int& frameId, int64_t& timestamp) override;
+    void SetFrameCallback(FrameCallback callback) override;
+    bool Reconnect() override;
     
-    double getFps() const;
-    int getWidth() const;
-    int getHeight() const;
+    double GetFps() const;
+    int GetWidth() const;
+    int GetHeight() const;
     
 private:
     std::string url_;
