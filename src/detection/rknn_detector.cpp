@@ -43,46 +43,44 @@ bool RknnDetector::Init() {
              ", model_type=" + config_.modelType +
              ", conf_threshold=" + std::to_string(config_.confThreshold) +
              ", detect_interval=" + std::to_string(config_.detectInterval));
-    
+
     if (!LoadModel()) {
         LOG_WARN("Failed to load RKNN model, using stub mode for testing");
-        useStubMode_ = true;
-        initialized_ = true;
-        return true;
+        return FallbackToStubMode(false);
     }
-    
+
     if (!QueryModelInfo()) {
         LOG_ERROR("Failed to query model info");
-        ReleaseBuffers();
-        useStubMode_ = true;
-        initialized_ = true;
-        return true;
+        return FallbackToStubMode(true);
     }
-    
+
     if (!PrepareInputBuffers()) {
         LOG_ERROR("Failed to prepare input buffers");
-        ReleaseBuffers();
-        useStubMode_ = true;
-        initialized_ = true;
-        return true;
+        return FallbackToStubMode(true);
     }
-    
+
     if (!PrepareOutputBuffers()) {
         LOG_ERROR("Failed to prepare output buffers");
-        ReleaseBuffers();
-        useStubMode_ = true;
-        initialized_ = true;
-        return true;
+        return FallbackToStubMode(true);
     }
-    
+
     modelLoaded_ = true;
     useStubMode_ = false;
     initialized_ = true;
-    
-    LOG_INFO("RKNN detector initialized successfully (NCHW input): " + 
+
+    LOG_INFO("RKNN detector initialized successfully (NCHW input): " +
              std::to_string(inputWidth_) + "x" + std::to_string(inputHeight_) +
              "x" + std::to_string(inputChannel_));
-    
+
+    return true;
+}
+
+bool RknnDetector::FallbackToStubMode(bool releaseBuffers) {
+    if (releaseBuffers) {
+        ReleaseBuffers();
+    }
+    useStubMode_ = true;
+    initialized_ = true;
     return true;
 }
 

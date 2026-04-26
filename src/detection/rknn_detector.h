@@ -66,6 +66,7 @@ private:
     bool PrepareInputBuffers();
     bool PrepareOutputBuffers();
     void ReleaseBuffers();
+    bool FallbackToStubMode(bool releaseBuffers);
     
     cv::Mat Preprocess(const cv::Mat& frame, float& scaleX, float& scaleY,
                        int32_t& offsetX, int32_t& offsetY);
