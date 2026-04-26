@@ -7,9 +7,17 @@ namespace diff_det {
 FrameDiffAnalyzer::FrameDiffAnalyzer(const RefFrameConfig& config)
     : threshold_(config.similarityThreshold)
     , compareMethod_(config.compareMethod)
-    , updateStrategy_(config.updateStrategy)
     , compareRoiOnly_(config.compareRoiOnly)
     , refUpdateCount_(0) {
+
+    if (config.updateStrategy == "newest") {
+        updateStrategy_ = RefUpdateStrategy::kNewest;
+    } else if (config.updateStrategy == "default") {
+        updateStrategy_ = RefUpdateStrategy::kDefault;
+    } else {
+        LOG_WARN("Unknown update strategy: " + config.updateStrategy + ", using default");
+        updateStrategy_ = RefUpdateStrategy::kDefault;
+    }
     
     if (compareMethod_ == "ssim") {
         calculator_ = std::make_unique<SsimCalculator>();
@@ -23,9 +31,10 @@ FrameDiffAnalyzer::FrameDiffAnalyzer(const RefFrameConfig& config)
         calculator_ = std::make_unique<SsimCalculator>();
     }
     
+    std::string strategyStr = (updateStrategy_ == RefUpdateStrategy::kNewest) ? "newest" : "default";
     LOG_INFO("FrameDiffAnalyzer initialized: method=" + compareMethod_ +
              ", threshold=" + std::to_string(threshold_) +
-             ", updateStrategy=" + updateStrategy_ +
+             ", updateStrategy=" + strategyStr +
              ", compareRoiOnly=" + std::string(compareRoiOnly_ ? "true" : "false"));
 }
 
@@ -77,20 +86,16 @@ void FrameDiffAnalyzer::UpdateRef(const cv::Mat& frame) {
         return;
     }
     
-    if (updateStrategy_ == "newest") {
+    if (updateStrategy_ == RefUpdateStrategy::kNewest) {
         if (!currentBoxes_.empty()) {
             refFrame_ = frame.clone();
             refUpdateCount_++;
             LOG_INFO("Ref frame updated (newest strategy), count=" + std::to_string(refUpdateCount_));
         }
-    } else if (updateStrategy_ == "default") {
+    } else {
         refFrame_ = frame.clone();
         refUpdateCount_++;
         LOG_INFO("Ref frame updated (default strategy), count=" + std::to_string(refUpdateCount_));
-    } else {
-        LOG_WARN("Unknown update strategy: " + updateStrategy_);
-        refFrame_ = frame.clone();
-        refUpdateCount_++;
     }
 }
 

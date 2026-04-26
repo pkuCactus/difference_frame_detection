@@ -8,6 +8,11 @@
 
 namespace diff_det {
 
+enum class RefUpdateStrategy {
+    kNewest,
+    kDefault
+};
+
 class IFrameDiffAnalyzer {
 public:
     virtual ~IFrameDiffAnalyzer() = default;
@@ -39,7 +44,7 @@ private:
     
     float threshold_;
     std::string compareMethod_;
-    std::string updateStrategy_;
+    RefUpdateStrategy updateStrategy_;
     bool compareRoiOnly_;
     cv::Mat refFrame_;
     std::vector<BoundingBox> currentBoxes_;
