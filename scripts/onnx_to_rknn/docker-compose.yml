@@ -14,7 +14,10 @@ services:
       - ./outputs:/app/outputs
       - ./datasets:/app/datasets
     environment:
-      - SECRET_KEY=your-secret-key-here
+      # SECRET_KEY 必须由宿主环境变量注入；为空时容器启动会失败，避免使用默认 secret
+      - SECRET_KEY=${SECRET_KEY:?请在宿主环境设置 SECRET_KEY，例如 export SECRET_KEY=$(openssl rand -hex 32)}
+      # 容器内必须监听 0.0.0.0 才能被 ports 映射访问
+      - FLASK_HOST=0.0.0.0
     restart: unless-stopped
 
   # rknn-toolkit 服务 (旧版芯片)
@@ -30,7 +33,8 @@ services:
       - ./outputs:/app/outputs
       - ./datasets:/app/datasets
     environment:
-      - SECRET_KEY=your-secret-key-here
+      - SECRET_KEY=${SECRET_KEY:?请在宿主环境设置 SECRET_KEY，例如 export SECRET_KEY=$(openssl rand -hex 32)}
+      - FLASK_HOST=0.0.0.0
     restart: unless-stopped
 
 # 使用方法:

@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Optional
 
 from flask import Flask, flash, jsonify, redirect, render_template, request, send_file, url_for
+from werkzeug.utils import secure_filename
 
 # 配置
 BASE_DIR = Path(__file__).parent
@@ -201,10 +202,12 @@ class ConversionTask:
         self.endTime: Optional[datetime] = None
         self.log: list[str] = []
         self.process: Optional[subprocess.Popen] = None
+        self._logLock = threading.Lock()
 
     def add_log(self, msg: str):
         """实时添加日志，支持并发安全"""
-        self.log.append(msg)
+        with self._logLock:
+            self.log.append(msg)
         print(f"[{self.taskId}] {msg}")
 
 
@@ -600,9 +603,10 @@ class VirtualEnvManager:
                 return False, "下载失败"
 
             print(f"安装本地 whl: {downloadedWhl.name}")
+            print(" ".join(installCmd) + f" {str(downloadedWhl)}")
             result = subprocess.run(
                 installCmd + [str(downloadedWhl)],
-                capture_output=True, text=True, timeout=300
+                capture_output=True, text=True, timeout=3600
             )
 
             if result.returncode == 0:
@@ -668,6 +672,7 @@ class VirtualEnvManager:
 
         print(f"开始下载: {url}")
         connectTimeout = 120  # SSL 握手等连接阶段超时
+        chunkSize = 1024 * 1024  # 1MB chunks，减少 Python 循环和系统调用次数
 
         for attempt in range(maxRetries):
             if attempt > 0:
@@ -692,9 +697,9 @@ class VirtualEnvManager:
                 downloaded = 0
                 lastReportTime = startTime
                 lastReportBytes = 0
-                chunkSize = 64 * 1024  # 64KB chunks
 
-                with open(dest, 'wb') as f:
+                # 1MB 文件写入缓冲，减少 write 系统调用次数
+                with open(dest, 'wb', buffering=1024 * 1024) as f:
                     while True:
                         chunkStart = time.time()
                         chunk = response.read(chunkSize)
@@ -705,8 +710,8 @@ class VirtualEnvManager:
                         downloaded += len(chunk)
                         chunkTime = time.time() - chunkStart
 
-                        # 检测是否卡死: 64KB 读取超过 60 秒认为卡住
-                        if chunkTime > 60:
+                        # 检测是否卡死: 1MB 读取超过 120 秒认为卡住（约 8.5KB/s）
+                        if chunkTime > 120:
                             print(f"  下载速度过慢，单个块耗时 {chunkTime:.0f}s，中止")
                             raise TimeoutError("Download stalled")
 
@@ -778,7 +783,7 @@ class VirtualEnvManager:
             else:
                 # 下载（文件可能很大，超时设长一些）
                 print(f"  从 GitHub 下载 tar.gz（文件可能很大，请耐心等待或手动下载）...")
-                if not self._download_file(tarUrl, tarPath, timeout=300):
+                if not self._download_file(tarUrl, tarPath, timeout=600):
                     continue
 
             # 解压
@@ -788,7 +793,18 @@ class VirtualEnvManager:
 
             try:
                 with tarfile.open(tarPath, "r:gz") as tar:
-                    tar.extractall(extractDir)
+                    try:
+                        tar.extractall(extractDir, filter="data")
+                    except TypeError:
+                        # Python 旧版本不支持 filter 参数，退回手动校验防穿越
+                        baseResolved = extractDir.resolve()
+                        for member in tar.getmembers():
+                            memberPath = (extractDir / member.name).resolve()
+                            try:
+                                memberPath.relative_to(baseResolved)
+                            except ValueError:
+                                raise RuntimeError(f"危险的 tar 路径: {member.name}")
+                        tar.extractall(extractDir)
                 print(f"  解压完成: {extractDir}")
             except Exception as e:
                 print(f"  解压失败: {str(e)[:80]}")
@@ -906,9 +922,81 @@ venvManager = VirtualEnvManager()
 
 # 存储转换任务
 tasks: dict[str, ConversionTask] = {}
+MAX_TASKS = 100
+# 转换子进程超时（秒），默认 10 分钟，可通过 RKNN_CONVERT_TIMEOUT 环境变量调整
+CONVERT_TIMEOUT = int(os.environ.get("RKNN_CONVERT_TIMEOUT", "600"))
+_tasksLock = threading.Lock()
+
+
+def _safe_under_dir(baseDir: Path, untrustedName: Optional[str]) -> Optional[Path]:
+    """
+    将不可信的文件名/相对路径限定在 baseDir 之内。
+
+    返回安全的绝对路径；若输入为空、为绝对路径，或 resolve 后逃出 baseDir，则返回 None。
+    """
+    if not untrustedName:
+        return None
+    candidate = Path(untrustedName)
+    if candidate.is_absolute():
+        return None
+    try:
+        resolved = (baseDir / candidate).resolve()
+    except (OSError, RuntimeError):
+        return None
+    baseResolved = baseDir.resolve()
+    try:
+        resolved.relative_to(baseResolved)
+    except ValueError:
+        return None
+    return resolved
+
+
+def _resolve_dataset_path(raw: Optional[str]) -> Optional[str]:
+    """限制用户提交的 dataset 路径必须在 DATASET_DIR 之内，越权返回 None"""
+    if not raw:
+        return None
+    safe = _safe_under_dir(DATASET_DIR, raw)
+    return str(safe) if safe else None
+
+
+def _cleanup_task_files(task: ConversionTask) -> None:
+    """删除任务关联的上传 / 输出文件，仅清理 UPLOAD_DIR 与 OUTPUT_DIR 之内的路径"""
+    for path, baseDir in (
+        (task.onnxPath, UPLOAD_DIR),
+        (task.outputPath, OUTPUT_DIR),
+    ):
+        if not path:
+            continue
+        try:
+            absPath = Path(path).resolve()
+            absPath.relative_to(baseDir.resolve())
+        except (OSError, ValueError):
+            continue
+        try:
+            absPath.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def _add_task(taskId: str, task: ConversionTask) -> None:
+    """添加任务，超过上限时优先淘汰最早的已完成任务，避免误删运行中任务"""
+    with _tasksLock:
+        if len(tasks) >= MAX_TASKS:
+            finished = [
+                t for t in tasks.values()
+                if t.status in ("completed", "failed")
+            ]
+            for oldTask in sorted(finished, key=lambda t: t.startTime)[:20]:
+                _cleanup_task_files(oldTask)
+                tasks.pop(oldTask.taskId, None)
+        tasks[taskId] = task
+
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "onnx-to-rknn-secret-key-2024")
+secretKey = os.environ.get("SECRET_KEY")
+if not secretKey:
+    raise RuntimeError("SECRET_KEY 环境变量未设置，请设置后重新启动")
+app.secret_key = secretKey
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024
 
 
@@ -1033,29 +1121,25 @@ def run_conversion_in_venv(task: ConversionTask) -> tuple[bool, str]:
                 "--config", configJson
             ],
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
         )
 
-        # 实时读取 stdout
+        # 实时读取 stdout（stderr 已重定向到 stdout）
         if task.process.stdout:
             for line in task.process.stdout:
                 _parse_worker_line(task, line.rstrip("\n"))
 
         # 等待进程结束（带超时）
         try:
-            returncode = task.process.wait(timeout=600)
+            returncode = task.process.wait(timeout=CONVERT_TIMEOUT)
         except subprocess.TimeoutExpired:
             task.process.kill()
             task.process.wait()
-            task.add_log("转换超时 (>10分钟)")
-            return False, "转换超时 (>10分钟)"
-
-        # 读取 stderr
-        stderr_text = task.process.stderr.read() if task.process.stderr else ""
-        if stderr_text:
-            task.add_log(f"stderr: {stderr_text.strip()}")
+            timeoutMin = CONVERT_TIMEOUT / 60
+            task.add_log(f"转换超时 (>{timeoutMin:.0f}分钟)")
+            return False, f"转换超时 (>{timeoutMin:.0f}分钟)"
 
         if returncode != 0:
             return False, "转换进程返回错误"
@@ -1114,7 +1198,8 @@ def convert_direct():
         
     # 保存文件
     taskId = str(uuid.uuid4())[:8]
-    filename = f"{taskId}_{file.filename}"
+    safeName = secure_filename(file.filename or "") or "model.onnx"
+    filename = f"{taskId}_{safeName}"
     filepath = UPLOAD_DIR / filename
     file.save(filepath)
     
@@ -1145,7 +1230,7 @@ def convert_direct():
     config.doQuantization = request.form.get("do_quantization") == "on"
     config.quantizedDtype = request.form.get("quantized_dtype", "asymmetric_quantized-u8")
     config.quantizedAlgorithm = request.form.get("quantized_algorithm", "normal")
-    config.datasetPath = request.form.get("dataset_path", "") or None
+    config.datasetPath = _resolve_dataset_path(request.form.get("dataset_path", ""))
     
     config.optimizationLevel = request.form.get("optimization_level", type=int, default=2)
     config.singleCoreMode = request.form.get("single_core_mode") == "on"
@@ -1155,7 +1240,7 @@ def convert_direct():
     
     # 创建任务
     task = ConversionTask(taskId, str(filepath), config)
-    tasks[taskId] = task
+    _add_task(taskId, task)
     
     outputFilename = f"{taskId}_{Path(filepath).stem}.rknn"
     outputPath = OUTPUT_DIR / outputFilename
@@ -1200,7 +1285,8 @@ def upload():
         return redirect(url_for("index"))
         
     taskId = str(uuid.uuid4())[:8]
-    filename = f"{taskId}_{file.filename}"
+    safeName = secure_filename(file.filename or "") or "model.onnx"
+    filename = f"{taskId}_{safeName}"
     filepath = UPLOAD_DIR / filename
     file.save(filepath)
     
@@ -1261,7 +1347,7 @@ def convert():
     config.doQuantization = request.form.get("do_quantization") == "on"
     config.quantizedDtype = request.form.get("quantized_dtype", "asymmetric_quantized-u8")
     config.quantizedAlgorithm = request.form.get("quantized_algorithm", "normal")
-    config.datasetPath = request.form.get("dataset_path", "") or None
+    config.datasetPath = _resolve_dataset_path(request.form.get("dataset_path", ""))
     
     config.optimizationLevel = request.form.get("optimization_level", type=int, default=2)
     config.singleCoreMode = request.form.get("single_core_mode") == "on"
@@ -1277,7 +1363,7 @@ def convert():
     
     # 创建任务
     task = ConversionTask(taskId, filepath, config)
-    tasks[taskId] = task
+    _add_task(taskId, task)
     
     outputFilename = f"{taskId}_{Path(filepath).stem}.rknn"
     outputPath = OUTPUT_DIR / outputFilename
@@ -1350,7 +1436,7 @@ def convert_async():
     config.doQuantization = request.form.get("do_quantization") == "on"
     config.quantizedDtype = request.form.get("quantized_dtype", "asymmetric_quantized-u8")
     config.quantizedAlgorithm = request.form.get("quantized_algorithm", "normal")
-    config.datasetPath = request.form.get("dataset_path", "") or None
+    config.datasetPath = _resolve_dataset_path(request.form.get("dataset_path", ""))
     
     config.optimizationLevel = request.form.get("optimization_level", type=int, default=2)
     config.singleCoreMode = request.form.get("single_core_mode") == "on"
@@ -1366,7 +1452,7 @@ def convert_async():
     
     # 创建任务
     task = ConversionTask(taskId, filepath, config)
-    tasks[taskId] = task
+    _add_task(taskId, task)
     
     outputFilename = f"{taskId}_{Path(filepath).stem}.rknn"
     outputPath = OUTPUT_DIR / outputFilename
@@ -1472,7 +1558,10 @@ def api_task(taskId: str):
 @app.route("/api/info/<path:filepath>")
 def api_info(filepath: str):
     """获取ONNX模型信息API"""
-    return jsonify(get_onnx_info(filepath))
+    safePath = _safe_under_dir(UPLOAD_DIR, filepath)
+    if safePath is None:
+        return jsonify({"success": False, "error": "非法路径"}), 400
+    return jsonify(get_onnx_info(str(safePath)))
 
 
 def init_virtual_environments():
@@ -1593,4 +1682,9 @@ if __name__ == "__main__":
     print(f"访问: http://localhost:5000")
     print("=" * 70)
 
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    debugMode = os.environ.get("FLASK_DEBUG", "false").lower() in ("1", "true", "yes")
+    # 默认仅监听本机回环，避免局域网未授权访问；如需对外开放请显式设置 FLASK_HOST=0.0.0.0
+    host = os.environ.get("FLASK_HOST", "127.0.0.1")
+    port = int(os.environ.get("FLASK_PORT", "5000"))
+    print(f"绑定地址: {host}:{port}（如需对外暴露请设置 FLASK_HOST=0.0.0.0）")
+    app.run(host=host, port=port, debug=debugMode)
