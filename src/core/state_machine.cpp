@@ -22,7 +22,21 @@ std::string PipelineStats::ToString() const {
     return oss.str();
 }
 
-StateMachine::StateMachine(const Config& config) 
+namespace {
+
+RefUpdateStrategy ParseUpdateStrategy(const std::string& strategy) {
+    if (strategy == "newest") return RefUpdateStrategy::kNewest;
+    return RefUpdateStrategy::kDefault;
+}
+
+EventAnalysisMode ParseEventMode(const std::string& mode) {
+    if (mode == "video") return EventAnalysisMode::kVideo;
+    return EventAnalysisMode::kImage;
+}
+
+} // namespace
+
+StateMachine::StateMachine(const Config& config)
     : config_(config)
     , state_(State::INIT)
     , running_(false)
@@ -32,9 +46,11 @@ StateMachine::StateMachine(const Config& config)
     , useCameraDetection_(false)
     , frameCounter_(0)
     , hasDifference_(false)
+    , updateStrategy_(ParseUpdateStrategy(config_.refFrame.updateStrategy))
+    , eventMode_(ParseEventMode(config_.eventAnalysis.mode))
     , lastReconnectAttemptTime_(0)
     , reconnectAttempts_(0) {
-    
+
     auto now = std::chrono::system_clock::now();
     pipelineStartTime_ = std::chrono::duration_cast<std::chrono::milliseconds>(
         now.time_since_epoch()).count();
@@ -246,7 +262,7 @@ void StateMachine::HandleDifferenceAnalysis() {
         hasDifference_ = false;
         pipelineStats_.framesSimilar++;
         
-        if (config_.refFrame.updateStrategy == "newest" && !currentBoxes_.empty()) {
+        if (updateStrategy_ == RefUpdateStrategy::kNewest && !currentBoxes_.empty()) {
             frameDiffAnalyzer_->UpdateRef(currentFrame_);
         }
         
@@ -275,7 +291,7 @@ void StateMachine::HandleEventAnalysis() {
     LOG_INFO("Entering event analysis, frameId=" + std::to_string(currentFrameId_) +
              ", boxes=" + std::to_string(currentBoxes_.size()));
     
-    if (config_.eventAnalysis.mode == "image") {
+    if (eventMode_ == EventAnalysisMode::kImage) {
         eventAnalyzer_->AnalyzeImage(currentFrame_, currentBoxes_);
     } else {
         std::vector<FrameWithMeta> frames = GetVideoFrames();
@@ -308,7 +324,7 @@ void StateMachine::HandleUpdateRef() {
     
     LOG_INFO("Updating Ref frame");
     
-    if (config_.refFrame.updateStrategy == "default" || hasDifference_) {
+    if (updateStrategy_ == RefUpdateStrategy::kDefault || hasDifference_) {
         frameDiffAnalyzer_->UpdateRef(currentFrame_);
     }
     
@@ -545,7 +561,7 @@ void StateMachine::CleanupComponents() {
 }
 
 void StateMachine::StoreFrameForVideo(const cv::Mat& frame, int frameId, int64_t timestamp) {
-    if (config_.eventAnalysis.mode == "video" && videoBuffer_) {
+    if (eventMode_ == EventAnalysisMode::kVideo && videoBuffer_) {
         videoBuffer_->AddFrame(frame, frameId, timestamp);
     }
 }

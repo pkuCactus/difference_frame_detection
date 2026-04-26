@@ -124,7 +124,9 @@ private:
     
     int frameCounter_;
     bool hasDifference_;
-    
+    RefUpdateStrategy updateStrategy_;
+    EventAnalysisMode eventMode_;
+
     std::mutex frameMutex_;
     std::condition_variable frameCv_;
     
