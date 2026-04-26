@@ -28,6 +28,7 @@ set(SOURCES
     src/core/state_machine.cpp
     src/core/pipeline.cpp
     src/rtsp/rtsp_client.cpp
+    src/rtsp/rtsp_validator.cpp
     src/decoder/frame_decoder.cpp
     src/camera/capability_checker.cpp
     src/camera/detection_reader.cpp

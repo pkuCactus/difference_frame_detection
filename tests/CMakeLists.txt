@@ -15,11 +15,13 @@ set(TEST_SOURCES
     test_performance_stats.cpp
     test_frame_queue.cpp
     test_rknn_adapter.cpp
+    test_rtsp_validator.cpp
     ${CMAKE_SOURCE_DIR}/src/common/config.cpp
     ${CMAKE_SOURCE_DIR}/src/common/logger.cpp
     ${CMAKE_SOURCE_DIR}/src/common/performance_stats.cpp
     ${CMAKE_SOURCE_DIR}/src/core/state_machine.cpp
     ${CMAKE_SOURCE_DIR}/src/rtsp/rtsp_client.cpp
+    ${CMAKE_SOURCE_DIR}/src/rtsp/rtsp_validator.cpp
     ${CMAKE_SOURCE_DIR}/src/decoder/frame_decoder.cpp
     ${CMAKE_SOURCE_DIR}/src/camera/capability_checker.cpp
     ${CMAKE_SOURCE_DIR}/src/camera/detection_reader.cpp

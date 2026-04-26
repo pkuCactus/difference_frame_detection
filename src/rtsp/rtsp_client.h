@@ -19,6 +19,9 @@ public:
     virtual bool GetFrame(cv::Mat& frame, int& frameId, int64_t& timestamp) = 0;
     virtual void SetFrameCallback(FrameCallback callback) = 0;
     virtual bool Reconnect() = 0;
+    virtual double GetFps() const = 0;
+    virtual int GetWidth() const = 0;
+    virtual int GetHeight() const = 0;
 };
 
 class RtspClient : public IRtspClient {
