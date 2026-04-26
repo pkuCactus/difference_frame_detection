@@ -67,3 +67,12 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# IDE
+.vscode/
+
+# System files
+.DS_Store
+
+# Runtime temp
+/tmp/difference_detection*
