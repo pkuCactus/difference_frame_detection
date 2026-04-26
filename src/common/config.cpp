@@ -6,6 +6,17 @@
 
 namespace diff_det {
 
+namespace {
+
+template<typename T>
+void SetIfPresent(const YAML::Node& node, const char* key, T& value) {
+    if (node[key]) {
+        value = node[key].as<T>();
+    }
+}
+
+} // namespace
+
 bool RtspConfig::IsValid() const {
     return !url.empty() && reconnectIntervalMs > 0;
 }
@@ -151,120 +162,60 @@ Config Config::FromYaml(const YAML::Node& node) {
     
     if (node["rtsp"]) {
         auto rtspNode = node["rtsp"];
-        if (rtspNode["url"]) {
-            config.rtsp.url = rtspNode["url"].as<std::string>();
-        }
-        if (rtspNode["reconnect_interval_ms"]) {
-            config.rtsp.reconnectIntervalMs = rtspNode["reconnect_interval_ms"].as<int32_t>();
-        }
+        SetIfPresent(rtspNode, "url", config.rtsp.url);
+        SetIfPresent(rtspNode, "reconnect_interval_ms", config.rtsp.reconnectIntervalMs);
     }
     
     if (node["camera_detection"]) {
         auto camNode = node["camera_detection"];
-        if (camNode["enabled"]) {
-            config.cameraDetection.enabled = camNode["enabled"].as<bool>();
-        }
-        if (camNode["protocol"]) {
-            config.cameraDetection.protocol = camNode["protocol"].as<std::string>();
-        }
-        if (camNode["endpoint"]) {
-            config.cameraDetection.endpoint = camNode["endpoint"].as<std::string>();
-        }
-        if (camNode["poll_interval_ms"]) {
-            config.cameraDetection.pollIntervalMs = camNode["poll_interval_ms"].as<int32_t>();
-        }
-        if (camNode["camera_id"]) {
-            config.cameraDetection.cameraId = camNode["camera_id"].as<std::string>();
-        }
-        if (camNode["camera_host"]) {
-            config.cameraDetection.cameraHost = camNode["camera_host"].as<std::string>();
-        }
-        if (camNode["camera_port"]) {
-            config.cameraDetection.cameraPort = camNode["camera_port"].as<int32_t>();
-        }
-        if (camNode["capability_url"]) {
-            config.cameraDetection.capabilityUrl = camNode["capability_url"].as<std::string>();
-        }
-        if (camNode["timeout_ms"]) {
-            config.cameraDetection.timeoutMs = camNode["timeout_ms"].as<int32_t>();
-        }
+        SetIfPresent(camNode, "enabled", config.cameraDetection.enabled);
+        SetIfPresent(camNode, "protocol", config.cameraDetection.protocol);
+        SetIfPresent(camNode, "endpoint", config.cameraDetection.endpoint);
+        SetIfPresent(camNode, "poll_interval_ms", config.cameraDetection.pollIntervalMs);
+        SetIfPresent(camNode, "camera_id", config.cameraDetection.cameraId);
+        SetIfPresent(camNode, "camera_host", config.cameraDetection.cameraHost);
+        SetIfPresent(camNode, "camera_port", config.cameraDetection.cameraPort);
+        SetIfPresent(camNode, "capability_url", config.cameraDetection.capabilityUrl);
+        SetIfPresent(camNode, "timeout_ms", config.cameraDetection.timeoutMs);
     }
     
     if (node["local_detection"]) {
         auto detNode = node["local_detection"];
-        if (detNode["model_path"]) {
-            config.localDetection.modelPath = detNode["model_path"].as<std::string>();
-        }
-        if (detNode["model_type"]) {
-            config.localDetection.modelType = detNode["model_type"].as<std::string>();
-        }
-        if (detNode["conf_threshold"]) {
-            config.localDetection.confThreshold = detNode["conf_threshold"].as<float>();
-        }
-        if (detNode["detect_interval"]) {
-            config.localDetection.detectInterval = detNode["detect_interval"].as<int32_t>();
-        }
-        if (detNode["timeout_ms"]) {
-            config.localDetection.timeoutMs = detNode["timeout_ms"].as<int32_t>();
-        }
+        SetIfPresent(detNode, "model_path", config.localDetection.modelPath);
+        SetIfPresent(detNode, "model_type", config.localDetection.modelType);
+        SetIfPresent(detNode, "conf_threshold", config.localDetection.confThreshold);
+        SetIfPresent(detNode, "detect_interval", config.localDetection.detectInterval);
+        SetIfPresent(detNode, "timeout_ms", config.localDetection.timeoutMs);
     }
     
     if (node["tracker"]) {
         auto trackerNode = node["tracker"];
-        if (trackerNode["enabled"]) {
-            config.tracker.enabled = trackerNode["enabled"].as<bool>();
-        }
-        if (trackerNode["confirm_frames"]) {
-            config.tracker.confirmFrames = trackerNode["confirm_frames"].as<int32_t>();
-        }
-        if (trackerNode["max_lost_frames"]) {
-            config.tracker.maxLostFrames = trackerNode["max_lost_frames"].as<int32_t>();
-        }
-        if (trackerNode["high_threshold"]) {
-            config.tracker.highThreshold = trackerNode["high_threshold"].as<float>();
-        }
-        if (trackerNode["low_threshold"]) {
-            config.tracker.lowThreshold = trackerNode["low_threshold"].as<float>();
-        }
-        if (trackerNode["match_threshold"]) {
-            config.tracker.matchThreshold = trackerNode["match_threshold"].as<float>();
-        }
+        SetIfPresent(trackerNode, "enabled", config.tracker.enabled);
+        SetIfPresent(trackerNode, "confirm_frames", config.tracker.confirmFrames);
+        SetIfPresent(trackerNode, "max_lost_frames", config.tracker.maxLostFrames);
+        SetIfPresent(trackerNode, "high_threshold", config.tracker.highThreshold);
+        SetIfPresent(trackerNode, "low_threshold", config.tracker.lowThreshold);
+        SetIfPresent(trackerNode, "match_threshold", config.tracker.matchThreshold);
     }
     
     if (node["ref_frame"]) {
         auto refNode = node["ref_frame"];
-        if (refNode["similarity_threshold"]) {
-            config.refFrame.similarityThreshold = refNode["similarity_threshold"].as<float>();
-        }
-        if (refNode["compare_method"]) {
-            config.refFrame.compareMethod = refNode["compare_method"].as<std::string>();
-        }
-        if (refNode["update_strategy"]) {
-            config.refFrame.updateStrategy = refNode["update_strategy"].as<std::string>();
-        }
-        if (refNode["compare_roi_only"]) {
-            config.refFrame.compareRoiOnly = refNode["compare_roi_only"].as<bool>();
-        }
+        SetIfPresent(refNode, "similarity_threshold", config.refFrame.similarityThreshold);
+        SetIfPresent(refNode, "compare_method", config.refFrame.compareMethod);
+        SetIfPresent(refNode, "update_strategy", config.refFrame.updateStrategy);
+        SetIfPresent(refNode, "compare_roi_only", config.refFrame.compareRoiOnly);
     }
-    
+
     if (node["event_analysis"]) {
         auto eventNode = node["event_analysis"];
-        if (eventNode["mode"]) {
-            config.eventAnalysis.mode = eventNode["mode"].as<std::string>();
-        }
-        if (eventNode["video_duration_sec"]) {
-            config.eventAnalysis.videoDurationSec = eventNode["video_duration_sec"].as<int32_t>();
-        }
+        SetIfPresent(eventNode, "mode", config.eventAnalysis.mode);
+        SetIfPresent(eventNode, "video_duration_sec", config.eventAnalysis.videoDurationSec);
     }
-    
+
     if (node["logging"]) {
         auto logNode = node["logging"];
-        if (logNode["level"]) {
-            config.logging.level = logNode["level"].as<std::string>();
-        }
-        if (logNode["file_path"]) {
-            config.logging.filePath = logNode["file_path"].as<std::string>();
-        }
+        SetIfPresent(logNode, "level", config.logging.level);
+        SetIfPresent(logNode, "file_path", config.logging.filePath);
     }
     
     return config;
