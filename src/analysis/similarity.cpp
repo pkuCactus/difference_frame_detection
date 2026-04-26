@@ -5,15 +5,18 @@
 
 namespace diff_det {
 
+float ISimilarityCalculator::Calculate(const cv::Mat& frame1, const cv::Mat& frame2) {
+    if (frame1.empty() || frame2.empty()) {
+        LOG_WARN(Name() + ": empty frame(s) received");
+        return 0.0f;
+    }
+    return DoCalculate(frame1, frame2);
+}
+
 SsimCalculator::SsimCalculator() {
 }
 
-float SsimCalculator::Calculate(const cv::Mat& frame1, const cv::Mat& frame2) {
-    if (frame1.empty() || frame2.empty()) {
-        LOG_WARN("SSIM: empty frame(s) received");
-        return 0.0f;
-    }
-    
+float SsimCalculator::DoCalculate(const cv::Mat& frame1, const cv::Mat& frame2) {
     if (frame1.size() != frame2.size()) {
         LOG_WARN("SSIM: frame sizes mismatch");
         return 0.0f;
@@ -103,12 +106,7 @@ cv::Mat SsimCalculator::createGaussianKernel(int size, float sigma) {
 PixelDiffCalculator::PixelDiffCalculator() {
 }
 
-float PixelDiffCalculator::Calculate(const cv::Mat& frame1, const cv::Mat& frame2) {
-    if (frame1.empty() || frame2.empty()) {
-        LOG_WARN("PixelDiff: empty frame(s) received");
-        return 0.0f;
-    }
-    
+float PixelDiffCalculator::DoCalculate(const cv::Mat& frame1, const cv::Mat& frame2) {
     if (frame1.size() != frame2.size()) {
         LOG_WARN("PixelDiff: frame sizes mismatch");
         return 0.0f;
@@ -144,12 +142,7 @@ float PixelDiffCalculator::calculatePixelDiffChannel(const cv::Mat& img1, const 
 HashCalculator::HashCalculator() {
 }
 
-float HashCalculator::Calculate(const cv::Mat& frame1, const cv::Mat& frame2) {
-    if (frame1.empty() || frame2.empty()) {
-        LOG_WARN("Hash: empty frame(s) received");
-        return 0.0f;
-    }
-    
+float HashCalculator::DoCalculate(const cv::Mat& frame1, const cv::Mat& frame2) {
     auto hash1 = computePHash(frame1);
     auto hash2 = computePHash(frame2);
     
