@@ -70,6 +70,7 @@ Testing/
 
 # IDE
 .vscode/
+.claude/
 
 # System files
 .DS_Store
