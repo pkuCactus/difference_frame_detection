@@ -7,31 +7,31 @@ using namespace diff_det;
 TEST(PerformanceStatsTest, Init) {
     PerformanceStats stats;
     
-    EXPECT_EQ(stats.getCounter("test"), 0);
-    EXPECT_EQ(stats.getAverageTime("test"), 0.0);
+    EXPECT_EQ(stats.GetCounter("test"), 0);
+    EXPECT_EQ(stats.GetAverageTime("test"), 0.0);
 }
 
 TEST(PerformanceStatsTest, Counter) {
     PerformanceStats stats;
     
-    stats.incrementCounter("test_counter");
-    EXPECT_EQ(stats.getCounter("test_counter"), 1);
+    stats.IncrementCounter("test_counter");
+    EXPECT_EQ(stats.GetCounter("test_counter"), 1);
     
-    stats.incrementCounter("test_counter", 5);
-    EXPECT_EQ(stats.getCounter("test_counter"), 6);
+    stats.IncrementCounter("test_counter", 5);
+    EXPECT_EQ(stats.GetCounter("test_counter"), 6);
     
-    stats.setCounter("test_counter", 100);
-    EXPECT_EQ(stats.getCounter("test_counter"), 100);
+    stats.SetCounter("test_counter", 100);
+    EXPECT_EQ(stats.GetCounter("test_counter"), 100);
 }
 
 TEST(PerformanceStatsTest, Timer) {
     PerformanceStats stats;
     
-    stats.startTimer("test_timer");
+    stats.StartTimer("test_timer");
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    stats.endTimer("test_timer");
+    stats.EndTimer("test_timer");
     
-    double avgTime = stats.getAverageTime("test_timer");
+    double avgTime = stats.GetAverageTime("test_timer");
     EXPECT_GE(avgTime, 40.0);
     EXPECT_LT(avgTime, 100.0);
 }
@@ -44,21 +44,21 @@ TEST(PerformanceStatsTest, ScopedTimer) {
         std::this_thread::sleep_for(std::chrono::milliseconds(30));
     }
     
-    double avgTime = stats.getAverageTime("scoped_timer");
+    double avgTime = stats.GetAverageTime("scoped_timer");
     EXPECT_GE(avgTime, 20.0);
 }
 
 TEST(PerformanceStatsTest, Summary) {
     PerformanceStats stats;
     
-    stats.incrementCounter("counter1", 10);
-    stats.incrementCounter("counter2", 20);
+    stats.IncrementCounter("counter1", 10);
+    stats.IncrementCounter("counter2", 20);
     
-    stats.startTimer("timer1");
+    stats.StartTimer("timer1");
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    stats.endTimer("timer1");
+    stats.EndTimer("timer1");
     
-    std::string summary = stats.getSummary();
+    std::string summary = stats.GetSummary();
     EXPECT_TRUE(summary.find("counter1") != std::string::npos);
     EXPECT_TRUE(summary.find("timer1") != std::string::npos);
 }
@@ -66,12 +66,12 @@ TEST(PerformanceStatsTest, Summary) {
 TEST(PerformanceStatsTest, Reset) {
     PerformanceStats stats;
     
-    stats.incrementCounter("test", 100);
-    stats.startTimer("test_timer");
-    stats.endTimer("test_timer");
+    stats.IncrementCounter("test", 100);
+    stats.StartTimer("test_timer");
+    stats.EndTimer("test_timer");
     
-    stats.reset();
+    stats.Reset();
     
-    EXPECT_EQ(stats.getCounter("test"), 0);
-    EXPECT_EQ(stats.getAverageTime("test_timer"), 0.0);
+    EXPECT_EQ(stats.GetCounter("test"), 0);
+    EXPECT_EQ(stats.GetAverageTime("test_timer"), 0.0);
 }

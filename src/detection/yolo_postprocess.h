@@ -14,7 +14,7 @@ class YoloPostprocess {
 public:
     YoloPostprocess(const std::string& modelType, float confThreshold, float nmsThreshold = 0.45f);
     
-    std::vector<BoundingBox> process(const std::vector<float>& outputs,
+    std::vector<BoundingBox> Process(const std::vector<float>& outputs,
                                       int numOutputs,
                                       int outputWidth,
                                       int outputHeight,
@@ -25,11 +25,11 @@ public:
                                       int offsetX,
                                       int offsetY);
     
-    void setConfThreshold(float threshold) { confThreshold_ = threshold; }
-    void setNmsThreshold(float threshold) { nmsThreshold_ = threshold; }
+    void SetConfThreshold(float threshold) { confThreshold_ = threshold; }
+    void SetNmsThreshold(float threshold) { nmsThreshold_ = threshold; }
     
 private:
-    std::vector<BoundingBox> processYolov5(const std::vector<float>& outputs,
+    std::vector<BoundingBox> ProcessYolov5(const std::vector<float>& outputs,
                                             int numOutputs,
                                             int originalWidth,
                                             int originalHeight,
@@ -38,7 +38,7 @@ private:
                                             int offsetX,
                                             int offsetY);
     
-    std::vector<BoundingBox> processYolov8(const std::vector<float>& outputs,
+    std::vector<BoundingBox> ProcessYolov8(const std::vector<float>& outputs,
                                             int numOutputs,
                                             int originalWidth,
                                             int originalHeight,
@@ -47,7 +47,7 @@ private:
                                             int offsetX,
                                             int offsetY);
     
-    std::vector<BoundingBox> processYolov3(const std::vector<float>& outputs,
+    std::vector<BoundingBox> ProcessYolov3(const std::vector<float>& outputs,
                                             int numOutputs,
                                             int originalWidth,
                                             int originalHeight,
@@ -57,7 +57,7 @@ private:
                                             int offsetY);
     
     std::vector<BoundingBox> nms(std::vector<BoundingBox>& boxes);
-    BoundingBox restoreBox(const BoundingBox& box,
+    BoundingBox RestoreBox(const BoundingBox& box,
                            float scaleX, float scaleY,
                            int offsetX, int offsetY);
     

@@ -10,36 +10,36 @@ namespace diff_det {
 
 struct FrameWithMeta {
     cv::Mat frame;
-    int frameId;
+    int32_t frameId;
     int64_t timestamp;
     std::vector<float> detectionTimes;
     
     FrameWithMeta() : frameId(-1), timestamp(0) {}
     
-    FrameWithMeta(const cv::Mat& f, int id, int64_t ts)
+    FrameWithMeta(const cv::Mat& f, int32_t id, int64_t ts)
         : frame(f.clone()), frameId(id), timestamp(ts) {}
 };
 
 class FrameQueue {
 public:
-    FrameQueue(int maxSize = 30);
+    FrameQueue(int32_t maxSize = 30);
     
-    void push(const cv::Mat& frame, int frameId, int64_t timestamp);
-    bool pop(cv::Mat& frame, int& frameId, int64_t& timestamp);
-    bool pop(FrameWithMeta& frameMeta);
+    void Push(const cv::Mat& frame, int32_t frameId, int64_t timestamp);
+    bool Pop(cv::Mat& frame, int32_t& frameId, int64_t& timestamp);
+    bool Pop(FrameWithMeta& frameMeta);
     
-    int size();
-    bool empty();
-    void clear();
+    int32_t Size();
+    bool Empty();
+    void Clear();
     
-    void setMaxSize(int size);
-    int getMaxSize();
+    void SetMaxSize(int32_t maxSize);
+    int32_t GetMaxSize();
     
-    void waitForFrame(int timeoutMs = 1000);
+    void WaitForFrame(int32_t timeoutMs = 1000);
     
 private:
     std::deque<FrameWithMeta> queue_;
-    int maxSize_;
+    int32_t maxSize_;
     std::mutex mutex_;
     std::condition_variable cv_;
     std::atomic<bool> stopped_;
@@ -47,28 +47,28 @@ private:
 
 class VideoFrameBuffer {
 public:
-    VideoFrameBuffer(int maxFrames = 150);
+    VideoFrameBuffer(int32_t maxFrames = 150);
     
-    void addFrame(const cv::Mat& frame, int frameId, int64_t timestamp);
+    void AddFrame(const cv::Mat& frame, int32_t frameId, int64_t timestamp);
     
-    std::vector<cv::Mat> getFrames(int count);
-    std::vector<cv::Mat> getFramesByDuration(int durationSec, double fps);
-    std::vector<FrameWithMeta> getFramesWithMeta(int count);
+    std::vector<cv::Mat> GetFrames(int32_t count);
+    std::vector<cv::Mat> GetFramesByDuration(int32_t durationSec, double fps);
+    std::vector<FrameWithMeta> GetFramesWithMeta(int32_t count);
     
-    void clear();
-    int size();
-    bool empty();
+    void Clear();
+    int32_t Size();
+    bool Empty();
     
-    int getOldestFrameId();
-    int getNewestFrameId();
-    int64_t getOldestTimestamp();
-    int64_t getNewestTimestamp();
+    int32_t GetOldestFrameId();
+    int32_t GetNewestFrameId();
+    int64_t GetOldestTimestamp();
+    int64_t GetNewestTimestamp();
     
-    void setMaxSize(int size);
+    void SetMaxSize(int32_t maxFrames);
     
 private:
     std::deque<FrameWithMeta> buffer_;
-    int maxFrames_;
+    int32_t maxFrames_;
     std::mutex mutex_;
 };
 

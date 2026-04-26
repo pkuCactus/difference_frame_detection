@@ -17,7 +17,7 @@ FrameDecoder::~FrameDecoder() {
     reset();
 }
 
-bool FrameDecoder::init(const std::string& rtspUrl) {
+bool FrameDecoder::Init(const std::string& rtspUrl) {
     url_ = rtspUrl;
     LOG_INFO("FrameDecoder initializing with RTSP URL: " + rtspUrl);
     
@@ -59,7 +59,7 @@ bool FrameDecoder::init(const std::string& rtspUrl) {
     }
 }
 
-bool FrameDecoder::decodeNext(cv::Mat& frame, int& frameId, int64_t& timestamp) {
+bool FrameDecoder::DecodeNext(cv::Mat& frame, int& frameId, int64_t& timestamp) {
     if (!opened_ || !cap_.isOpened()) {
         LOG_WARN("FrameDecoder not opened");
         return false;
@@ -73,7 +73,7 @@ bool FrameDecoder::decodeNext(cv::Mat& frame, int& frameId, int64_t& timestamp) 
         }
         
         if (frame.empty()) {
-            LOG_WARN("FrameDecoder received empty frame");
+            LOG_WARN("FrameDecoder received Empty frame");
             return false;
         }
         
@@ -108,15 +108,15 @@ bool FrameDecoder::isOpened() {
     return opened_ && cap_.isOpened();
 }
 
-double FrameDecoder::getFps() const {
+double FrameDecoder::GetFps() const {
     return fps_;
 }
 
-int FrameDecoder::getWidth() const {
+int FrameDecoder::GetWidth() const {
     return width_;
 }
 
-int FrameDecoder::getHeight() const {
+int FrameDecoder::GetHeight() const {
     return height_;
 }
 

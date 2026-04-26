@@ -13,18 +13,18 @@ public:
     Pipeline(const Config& config);
     ~Pipeline();
     
-    void start();
-    void stop();
-    void pause();
-    void resume();
+    void Start();
+    void Stop();
+    void Pause();
+    void Resume();
     
-    bool isRunning() const;
+    bool IsRunning() const;
     bool isPaused() const;
     
-    State getCurrentState() const;
-    int getFrameCount() const;
-    int getEventCount() const;
-    PipelineStats getStats() const;
+    State GetCurrentState() const;
+    int GetFrameCount() const;
+    int GetEventCount() const;
+    PipelineStats GetStats() const;
     
     void setConfig(const Config& config);
     Config getConfig() const;

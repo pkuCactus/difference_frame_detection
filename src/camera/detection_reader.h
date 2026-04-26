@@ -12,9 +12,9 @@ class ICameraDetectionReader {
 public:
     virtual ~ICameraDetectionReader() = default;
     
-    virtual bool init(const CameraDetectionConfig& config) = 0;
-    virtual CameraDetectionResult getDetectionResult() = 0;
-    virtual bool matchFrame(int frameId, int64_t timestamp, 
+    virtual bool Init(const CameraDetectionConfig& config) = 0;
+    virtual CameraDetectionResult GetDetectionResult() = 0;
+    virtual bool MatchFrame(int frameId, int64_t timestamp, 
                             const CameraDetectionResult& result) = 0;
 };
 
@@ -23,14 +23,14 @@ public:
     CameraDetectionReader();
     ~CameraDetectionReader();
     
-    bool init(const CameraDetectionConfig& config) override;
-    CameraDetectionResult getDetectionResult() override;
-    bool matchFrame(int frameId, int64_t timestamp, 
+    bool Init(const CameraDetectionConfig& config) override;
+    CameraDetectionResult GetDetectionResult() override;
+    bool MatchFrame(int frameId, int64_t timestamp, 
                     const CameraDetectionResult& result) override;
     
 private:
-    CameraDetectionResult fetchByRest();
-    CameraDetectionResult fetchByOnvif();
+    CameraDetectionResult FetchByRest();
+    CameraDetectionResult FetchByOnvif();
     
     CameraDetectionConfig config_;
     std::deque<CameraDetectionResult> resultQueue_;

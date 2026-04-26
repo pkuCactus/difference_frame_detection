@@ -4,7 +4,7 @@
 using namespace diff_det;
 
 TEST(RknnAdapterTest, PlatformCheck) {
-    bool isRK3566 = RknnAdapter::checkPlatform();
+    bool isRK3566 = RknnAdapter::CheckPlatform();
     
     EXPECT_FALSE(isRK3566);
 }
@@ -12,41 +12,41 @@ TEST(RknnAdapterTest, PlatformCheck) {
 TEST(RknnAdapterTest, InitStubMode) {
     RknnAdapter adapter;
     
-    EXPECT_FALSE(adapter.isInitialized());
+    EXPECT_FALSE(adapter.IsInitialized());
     
-    bool result = adapter.init("/tmp/nonexistent.rknn");
+    bool result = adapter.Init("/tmp/nonexistent.rknn");
     EXPECT_TRUE(result);
-    EXPECT_TRUE(adapter.isInitialized());
+    EXPECT_TRUE(adapter.IsInitialized());
     
     adapter.release();
-    EXPECT_FALSE(adapter.isInitialized());
+    EXPECT_FALSE(adapter.IsInitialized());
 }
 
 TEST(RknnAdapterTest, InputSize) {
     RknnAdapter adapter;
-    adapter.init("/tmp/test.rknn");
+    adapter.Init("/tmp/test.rknn");
     
-    int width = adapter.getInputWidth();
-    int height = adapter.getInputHeight();
-    int channel = adapter.getInputChannel();
-    int size = adapter.getInputSize();
+    int Width = adapter.GetInputWidth();
+    int Height = adapter.GetInputHeight();
+    int channel = adapter.GetInputChannel();
+    int Size = adapter.GetInputSize();
     
-    EXPECT_EQ(width, 832);
-    EXPECT_EQ(height, 448);
+    EXPECT_EQ(Width, 832);
+    EXPECT_EQ(Height, 448);
     EXPECT_EQ(channel, 3);
-    EXPECT_EQ(size, width * height * channel);
+    EXPECT_EQ(Size, Width * Height * channel);
     
     adapter.release();
 }
 
 TEST(RknnAdapterTest, SetInputBuffer) {
     RknnAdapter adapter;
-    adapter.init("/tmp/test.rknn");
+    adapter.Init("/tmp/test.rknn");
     
-    int size = adapter.getInputSize();
-    std::vector<uint8_t> buffer(size, 128);
+    int Size = adapter.GetInputSize();
+    std::vector<uint8_t> buffer(Size, 128);
     
-    bool result = adapter.setInputBuffer(buffer.data(), size);
+    bool result = adapter.SetInputBuffer(buffer.data(), Size);
     EXPECT_TRUE(result);
     
     adapter.release();
@@ -54,13 +54,13 @@ TEST(RknnAdapterTest, SetInputBuffer) {
 
 TEST(RknnAdapterTest, RunInference) {
     RknnAdapter adapter;
-    adapter.init("/tmp/test.rknn");
+    adapter.Init("/tmp/test.rknn");
     
-    int size = adapter.getInputSize();
-    std::vector<uint8_t> buffer(size, 128);
-    adapter.setInputBuffer(buffer.data(), size);
+    int Size = adapter.GetInputSize();
+    std::vector<uint8_t> buffer(Size, 128);
+    adapter.SetInputBuffer(buffer.data(), Size);
     
-    bool result = adapter.run();
+    bool result = adapter.Run();
     EXPECT_TRUE(result);
     
     adapter.release();
@@ -68,18 +68,18 @@ TEST(RknnAdapterTest, RunInference) {
 
 TEST(RknnAdapterTest, GetOutput) {
     RknnAdapter adapter;
-    adapter.init("/tmp/test.rknn");
+    adapter.Init("/tmp/test.rknn");
     
-    int inputSize = adapter.getInputSize();
+    int inputSize = adapter.GetInputSize();
     std::vector<uint8_t> inputBuffer(inputSize, 128);
-    adapter.setInputBuffer(inputBuffer.data(), inputSize);
-    adapter.run();
+    adapter.SetInputBuffer(inputBuffer.data(), inputSize);
+    adapter.Run();
     
-    int outputSize = adapter.getOutputSize(0);
+    int outputSize = adapter.GetOutputSize(0);
     EXPECT_EQ(outputSize, 0);
     
     std::vector<float> outputBuffer(outputSize);
-    bool result = adapter.getOutputBuffer(outputBuffer.data(), outputSize);
+    bool result = adapter.GetOutputBuffer(outputBuffer.data(), outputSize);
     EXPECT_TRUE(result);
     
     adapter.release();

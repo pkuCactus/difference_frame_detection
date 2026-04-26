@@ -9,7 +9,7 @@ TEST(SsimCalculatorTest, IdenticalFrames) {
     
     cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
     
-    float similarity = calculator.calculate(frame, frame);
+    float similarity = calculator.Calculate(frame, frame);
     EXPECT_NEAR(similarity, 1.0f, 0.01f);
 }
 
@@ -19,7 +19,7 @@ TEST(SsimCalculatorTest, DifferentFrames) {
     cv::Mat frame1(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
     cv::Mat frame2(480, 640, CV_8UC3, cv::Scalar(0, 0, 0));
     
-    float similarity = calculator.calculate(frame1, frame2);
+    float similarity = calculator.Calculate(frame1, frame2);
     EXPECT_LT(similarity, 0.9f);
 }
 
@@ -29,7 +29,7 @@ TEST(SsimCalculatorTest, EmptyFrames) {
     cv::Mat emptyFrame;
     cv::Mat frame(480, 640, CV_8UC3);
     
-    float similarity = calculator.calculate(emptyFrame, frame);
+    float similarity = calculator.Calculate(emptyFrame, frame);
     EXPECT_FLOAT_EQ(similarity, 0.0f);
 }
 
@@ -39,7 +39,7 @@ TEST(SsimCalculatorTest, DifferentSizes) {
     cv::Mat frame1(480, 640, CV_8UC3);
     cv::Mat frame2(320, 240, CV_8UC3);
     
-    float similarity = calculator.calculate(frame1, frame2);
+    float similarity = calculator.Calculate(frame1, frame2);
     EXPECT_FLOAT_EQ(similarity, 0.0f);
 }
 
@@ -48,7 +48,7 @@ TEST(PixelDiffCalculatorTest, IdenticalFrames) {
     
     cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
     
-    float similarity = calculator.calculate(frame, frame);
+    float similarity = calculator.Calculate(frame, frame);
     EXPECT_NEAR(similarity, 1.0f, 0.01f);
 }
 
@@ -58,7 +58,7 @@ TEST(PixelDiffCalculatorTest, DifferentFrames) {
     cv::Mat frame1(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
     cv::Mat frame2(480, 640, CV_8UC3, cv::Scalar(64, 64, 64));
     
-    float similarity = calculator.calculate(frame1, frame2);
+    float similarity = calculator.Calculate(frame1, frame2);
     EXPECT_LT(similarity, 1.0f);
 }
 
@@ -68,7 +68,7 @@ TEST(PixelDiffCalculatorTest, EmptyFrames) {
     cv::Mat emptyFrame;
     cv::Mat frame(480, 640, CV_8UC3);
     
-    float similarity = calculator.calculate(emptyFrame, frame);
+    float similarity = calculator.Calculate(emptyFrame, frame);
     EXPECT_FLOAT_EQ(similarity, 0.0f);
 }
 

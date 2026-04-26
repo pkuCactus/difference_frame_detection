@@ -3,13 +3,13 @@
 
 namespace diff_det {
 
-FrameQueue::FrameQueue(int maxSize)
+FrameQueue::FrameQueue(int32_t maxSize)
     : maxSize_(maxSize)
     , stopped_(false) {
     LOG_INFO("FrameQueue created with maxSize=" + std::to_string(maxSize));
 }
 
-void FrameQueue::push(const cv::Mat& frame, int frameId, int64_t timestamp) {
+void FrameQueue::Push(const cv::Mat& frame, int32_t frameId, int64_t timestamp) {
     std::lock_guard<std::mutex> lock(mutex_);
     
     FrameWithMeta meta(frame, frameId, timestamp);
@@ -24,10 +24,10 @@ void FrameQueue::push(const cv::Mat& frame, int frameId, int64_t timestamp) {
     cv_.notify_one();
     
     LOG_DEBUG("FrameQueue pushed frame " + std::to_string(frameId) + 
-              ", size=" + std::to_string(queue_.size()));
+              ", Size=" + std::to_string(queue_.size()));
 }
 
-bool FrameQueue::pop(cv::Mat& frame, int& frameId, int64_t& timestamp) {
+bool FrameQueue::Pop(cv::Mat& frame, int32_t& frameId, int64_t& timestamp) {
     std::lock_guard<std::mutex> lock(mutex_);
     
     if (queue_.empty()) {
@@ -44,7 +44,7 @@ bool FrameQueue::pop(cv::Mat& frame, int& frameId, int64_t& timestamp) {
     return true;
 }
 
-bool FrameQueue::pop(FrameWithMeta& frameMeta) {
+bool FrameQueue::Pop(FrameWithMeta& frameMeta) {
     std::lock_guard<std::mutex> lock(mutex_);
     
     if (queue_.empty()) {
@@ -57,36 +57,36 @@ bool FrameQueue::pop(FrameWithMeta& frameMeta) {
     return true;
 }
 
-int FrameQueue::size() {
+int32_t FrameQueue::Size() {
     std::lock_guard<std::mutex> lock(mutex_);
-    return static_cast<int>(queue_.size());
+    return static_cast<int32_t>(queue_.size());
 }
 
-bool FrameQueue::empty() {
+bool FrameQueue::Empty() {
     std::lock_guard<std::mutex> lock(mutex_);
     return queue_.empty();
 }
 
-void FrameQueue::clear() {
+void FrameQueue::Clear() {
     std::lock_guard<std::mutex> lock(mutex_);
     queue_.clear();
     LOG_INFO("FrameQueue cleared");
 }
 
-void FrameQueue::setMaxSize(int size) {
+void FrameQueue::SetMaxSize(int32_t maxSize) {
     std::lock_guard<std::mutex> lock(mutex_);
-    maxSize_ = size;
+    maxSize_ = maxSize;
     
     while (queue_.size() > static_cast<size_t>(maxSize_)) {
         queue_.pop_front();
     }
 }
 
-int FrameQueue::getMaxSize() {
+int32_t FrameQueue::GetMaxSize() {
     return maxSize_;
 }
 
-void FrameQueue::waitForFrame(int timeoutMs) {
+void FrameQueue::WaitForFrame(int32_t timeoutMs) {
     std::unique_lock<std::mutex> lock(mutex_);
     
     if (!queue_.empty()) {
@@ -96,12 +96,12 @@ void FrameQueue::waitForFrame(int timeoutMs) {
     cv_.wait_for(lock, std::chrono::milliseconds(timeoutMs));
 }
 
-VideoFrameBuffer::VideoFrameBuffer(int maxFrames)
+VideoFrameBuffer::VideoFrameBuffer(int32_t maxFrames)
     : maxFrames_(maxFrames) {
     LOG_INFO("VideoFrameBuffer created with maxFrames=" + std::to_string(maxFrames));
 }
 
-void VideoFrameBuffer::addFrame(const cv::Mat& frame, int frameId, int64_t timestamp) {
+void VideoFrameBuffer::AddFrame(const cv::Mat& frame, int32_t frameId, int64_t timestamp) {
     std::lock_guard<std::mutex> lock(mutex_);
     
     FrameWithMeta meta(frame, frameId, timestamp);
@@ -112,18 +112,18 @@ void VideoFrameBuffer::addFrame(const cv::Mat& frame, int frameId, int64_t times
     }
     
     LOG_DEBUG("VideoFrameBuffer added frame " + std::to_string(frameId) +
-              ", size=" + std::to_string(buffer_.size()));
+              ", Size=" + std::to_string(buffer_.size()));
 }
 
-std::vector<cv::Mat> VideoFrameBuffer::getFrames(int count) {
+std::vector<cv::Mat> VideoFrameBuffer::GetFrames(int32_t count) {
     std::lock_guard<std::mutex> lock(mutex_);
     
     std::vector<cv::Mat> frames;
     
-    int actualCount = std::min(count, static_cast<int>(buffer_.size()));
+    int32_t actualCount = std::min(count, static_cast<int32_t>(buffer_.size()));
     
     auto it = buffer_.rbegin();
-    for (int i = 0; i < actualCount && it != buffer_.rend(); ++i, ++it) {
+    for (int32_t i = 0; i < actualCount && it != buffer_.rend(); ++i, ++it) {
         frames.push_back(it->frame.clone());
     }
     
@@ -134,20 +134,20 @@ std::vector<cv::Mat> VideoFrameBuffer::getFrames(int count) {
     return frames;
 }
 
-std::vector<cv::Mat> VideoFrameBuffer::getFramesByDuration(int durationSec, double fps) {
-    int frameCount = static_cast<int>(durationSec * fps);
-    return getFrames(frameCount);
+std::vector<cv::Mat> VideoFrameBuffer::GetFramesByDuration(int32_t durationSec, double fps) {
+    int32_t frameCount = static_cast<int32_t>(durationSec * fps);
+    return GetFrames(frameCount);
 }
 
-std::vector<FrameWithMeta> VideoFrameBuffer::getFramesWithMeta(int count) {
+std::vector<FrameWithMeta> VideoFrameBuffer::GetFramesWithMeta(int32_t count) {
     std::lock_guard<std::mutex> lock(mutex_);
     
     std::vector<FrameWithMeta> frames;
     
-    int actualCount = std::min(count, static_cast<int>(buffer_.size()));
+    int32_t actualCount = std::min(count, static_cast<int32_t>(buffer_.size()));
     
     auto it = buffer_.rbegin();
-    for (int i = 0; i < actualCount && it != buffer_.rend(); ++i, ++it) {
+    for (int32_t i = 0; i < actualCount && it != buffer_.rend(); ++i, ++it) {
         frames.push_back(*it);
     }
     
@@ -156,49 +156,49 @@ std::vector<FrameWithMeta> VideoFrameBuffer::getFramesWithMeta(int count) {
     return frames;
 }
 
-void VideoFrameBuffer::clear() {
+void VideoFrameBuffer::Clear() {
     std::lock_guard<std::mutex> lock(mutex_);
     buffer_.clear();
     LOG_INFO("VideoFrameBuffer cleared");
 }
 
-int VideoFrameBuffer::size() {
+int32_t VideoFrameBuffer::Size() {
     std::lock_guard<std::mutex> lock(mutex_);
-    return static_cast<int>(buffer_.size());
+    return static_cast<int32_t>(buffer_.size());
 }
 
-bool VideoFrameBuffer::empty() {
+bool VideoFrameBuffer::Empty() {
     std::lock_guard<std::mutex> lock(mutex_);
     return buffer_.empty();
 }
 
-int VideoFrameBuffer::getOldestFrameId() {
+int32_t VideoFrameBuffer::GetOldestFrameId() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (buffer_.empty()) return -1;
     return buffer_.front().frameId;
 }
 
-int VideoFrameBuffer::getNewestFrameId() {
+int32_t VideoFrameBuffer::GetNewestFrameId() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (buffer_.empty()) return -1;
     return buffer_.back().frameId;
 }
 
-int64_t VideoFrameBuffer::getOldestTimestamp() {
+int64_t VideoFrameBuffer::GetOldestTimestamp() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (buffer_.empty()) return 0;
     return buffer_.front().timestamp;
 }
 
-int64_t VideoFrameBuffer::getNewestTimestamp() {
+int64_t VideoFrameBuffer::GetNewestTimestamp() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (buffer_.empty()) return 0;
     return buffer_.back().timestamp;
 }
 
-void VideoFrameBuffer::setMaxSize(int size) {
+void VideoFrameBuffer::SetMaxSize(int32_t maxFrames) {
     std::lock_guard<std::mutex> lock(mutex_);
-    maxFrames_ = size;
+    maxFrames_ = maxFrames;
     
     while (buffer_.size() > static_cast<size_t>(maxFrames_)) {
         buffer_.pop_front();

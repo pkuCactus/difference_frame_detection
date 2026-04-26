@@ -15,7 +15,7 @@ CameraCapabilityChecker::CameraCapabilityChecker() : supported_(false) {
 CameraCapabilityChecker::~CameraCapabilityChecker() {
 }
 
-CapabilityResult CameraCapabilityChecker::check(const CameraDetectionConfig& config) {
+CapabilityResult CameraCapabilityChecker::Check(const CameraDetectionConfig& config) {
     CapabilityResult result;
     
     if (!config.enabled) {
@@ -65,9 +65,9 @@ CapabilityResult CameraCapabilityChecker::checkByRest(const CameraDetectionConfi
     
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, 
-                     +[](void* contents, size_t size, size_t nmemb, std::string* s) {
-                         s->append((char*)contents, size * nmemb);
-                         return size * nmemb;
+                     +[](void* contents, size_t Size, size_t nmemb, std::string* s) {
+                         s->append((char*)contents, Size * nmemb);
+                         return Size * nmemb;
                      });
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseString);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, config.timeoutMs);
@@ -78,7 +78,7 @@ CapabilityResult CameraCapabilityChecker::checkByRest(const CameraDetectionConfi
     if (res != CURLE_OK) {
         result.supported = false;
         result.reason = "CURL error: " + std::string(curl_easy_strerror(res));
-        LOG_WARN("REST capability check failed: " + result.reason);
+        LOG_WARN("REST capability Check failed: " + result.reason);
         curl_easy_cleanup(curl);
         return result;
     }
@@ -90,7 +90,7 @@ CapabilityResult CameraCapabilityChecker::checkByRest(const CameraDetectionConfi
     if (httpCode != 200) {
         result.supported = false;
         result.reason = "HTTP response code: " + std::to_string(httpCode);
-        LOG_WARN("REST capability check failed: " + result.reason);
+        LOG_WARN("REST capability Check failed: " + result.reason);
         return result;
     }
     
@@ -128,7 +128,7 @@ CapabilityResult CameraCapabilityChecker::checkByOnvif(const CameraDetectionConf
     LOG_INFO("Checking capability via ONVIF (stub implementation)");
     
     result.supported = false;
-    result.reason = "ONVIF capability check not implemented, using stub";
+    result.reason = "ONVIF capability Check not implemented, using stub";
     
     return result;
 }

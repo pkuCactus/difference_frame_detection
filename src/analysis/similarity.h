@@ -9,7 +9,7 @@ class ISimilarityCalculator {
 public:
     virtual ~ISimilarityCalculator() = default;
     
-    virtual float calculate(const cv::Mat& frame1, const cv::Mat& frame2) = 0;
+    virtual float Calculate(const cv::Mat& frame1, const cv::Mat& frame2) = 0;
     virtual std::string name() = 0;
 };
 
@@ -17,19 +17,19 @@ class SsimCalculator : public ISimilarityCalculator {
 public:
     SsimCalculator();
     
-    float calculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
+    float Calculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
     std::string name() override { return "ssim"; }
     
 private:
     float calculateSsimChannel(const cv::Mat& img1, const cv::Mat& img2);
-    cv::Mat createGaussianKernel(int size, float sigma);
+    cv::Mat createGaussianKernel(int Size, float sigma);
 };
 
 class PixelDiffCalculator : public ISimilarityCalculator {
 public:
     PixelDiffCalculator();
     
-    float calculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
+    float Calculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
     std::string name() override { return "pixel_diff"; }
     
 private:
@@ -40,7 +40,7 @@ class HashCalculator : public ISimilarityCalculator {
 public:
     HashCalculator();
     
-    float calculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
+    float Calculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
     std::string name() override { return "phash"; }
     
 private:

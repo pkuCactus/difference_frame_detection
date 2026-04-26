@@ -10,9 +10,9 @@ class ITracker {
 public:
     virtual ~ITracker() = default;
     
-    virtual std::vector<Track> update(const cv::Mat& frame, 
+    virtual std::vector<Track> Update(const cv::Mat& frame, 
                                        const std::vector<BoundingBox>& boxes) = 0;
-    virtual std::vector<Track> predict() = 0;
+    virtual std::vector<Track> Predict() = 0;
     virtual void reset() = 0;
 };
 

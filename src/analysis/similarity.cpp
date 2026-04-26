@@ -8,9 +8,9 @@ namespace diff_det {
 SsimCalculator::SsimCalculator() {
 }
 
-float SsimCalculator::calculate(const cv::Mat& frame1, const cv::Mat& frame2) {
+float SsimCalculator::Calculate(const cv::Mat& frame1, const cv::Mat& frame2) {
     if (frame1.empty() || frame2.empty()) {
-        LOG_WARN("SSIM: empty frame(s) received");
+        LOG_WARN("SSIM: Empty frame(s) received");
         return 0.0f;
     }
     
@@ -84,9 +84,9 @@ float SsimCalculator::calculateSsimChannel(const cv::Mat& img1, const cv::Mat& i
     return mean[0];
 }
 
-cv::Mat SsimCalculator::createGaussianKernel(int size, float sigma) {
-    cv::Mat kernel(size, size, CV_32F);
-    int half = size / 2;
+cv::Mat SsimCalculator::createGaussianKernel(int Size, float sigma) {
+    cv::Mat kernel(Size, Size, CV_32F);
+    int half = Size / 2;
     
     for (int y = -half; y <= half; ++y) {
         for (int x = -half; x <= half; ++x) {
@@ -103,9 +103,9 @@ cv::Mat SsimCalculator::createGaussianKernel(int size, float sigma) {
 PixelDiffCalculator::PixelDiffCalculator() {
 }
 
-float PixelDiffCalculator::calculate(const cv::Mat& frame1, const cv::Mat& frame2) {
+float PixelDiffCalculator::Calculate(const cv::Mat& frame1, const cv::Mat& frame2) {
     if (frame1.empty() || frame2.empty()) {
-        LOG_WARN("PixelDiff: empty frame(s) received");
+        LOG_WARN("PixelDiff: Empty frame(s) received");
         return 0.0f;
     }
     
@@ -144,9 +144,9 @@ float PixelDiffCalculator::calculatePixelDiffChannel(const cv::Mat& img1, const 
 HashCalculator::HashCalculator() {
 }
 
-float HashCalculator::calculate(const cv::Mat& frame1, const cv::Mat& frame2) {
+float HashCalculator::Calculate(const cv::Mat& frame1, const cv::Mat& frame2) {
     if (frame1.empty() || frame2.empty()) {
-        LOG_WARN("Hash: empty frame(s) received");
+        LOG_WARN("Hash: Empty frame(s) received");
         return 0.0f;
     }
     

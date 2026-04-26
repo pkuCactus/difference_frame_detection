@@ -29,14 +29,14 @@ FrameDiffAnalyzer::FrameDiffAnalyzer(const RefFrameConfig& config)
              ", compareRoiOnly=" + std::string(compareRoiOnly_ ? "true" : "false"));
 }
 
-bool FrameDiffAnalyzer::isSimilar(const cv::Mat& current, const cv::Mat& ref) {
+bool FrameDiffAnalyzer::IsSimilar(const cv::Mat& current, const cv::Mat& ref) {
     if (current.empty()) {
-        LOG_WARN("Current frame is empty");
+        LOG_WARN("Current frame is Empty");
         return false;
     }
     
     if (ref.empty()) {
-        LOG_INFO("Ref frame is empty, must enter event analysis");
+        LOG_INFO("Ref frame is Empty, must enter event analysis");
         return false;
     }
     
@@ -44,10 +44,10 @@ bool FrameDiffAnalyzer::isSimilar(const cv::Mat& current, const cv::Mat& ref) {
     cv::Mat compareRef = ref;
     
     if (compareRoiOnly_ && !currentBoxes_.empty()) {
-        compareCurrent = extractRoi(current, currentBoxes_);
+        compareCurrent = ExtractRoi(current, currentBoxes_);
         
         std::vector<BoundingBox> refBoxes = currentBoxes_;
-        compareRef = extractRoi(ref, refBoxes);
+        compareRef = ExtractRoi(ref, refBoxes);
         
         if (compareCurrent.empty() || compareRef.empty()) {
             LOG_WARN("ROI extraction failed, using full frame");
@@ -60,20 +60,20 @@ bool FrameDiffAnalyzer::isSimilar(const cv::Mat& current, const cv::Mat& ref) {
         cv::resize(compareCurrent, compareCurrent, compareRef.size());
     }
     
-    float similarity = calculator_->calculate(compareCurrent, compareRef);
+    float similarity = calculator_->Calculate(compareCurrent, compareRef);
     
-    bool isSimilar = similarity >= threshold_;
+    bool IsSimilar = similarity >= threshold_;
     
     LOG_INFO("Frame comparison: similarity=" + std::to_string(similarity) +
              ", threshold=" + std::to_string(threshold_) +
-             ", result=" + std::string(isSimilar ? "similar" : "different"));
+             ", result=" + std::string(IsSimilar ? "similar" : "different"));
     
-    return isSimilar;
+    return IsSimilar;
 }
 
-void FrameDiffAnalyzer::updateRef(const cv::Mat& frame) {
+void FrameDiffAnalyzer::UpdateRef(const cv::Mat& frame) {
     if (frame.empty()) {
-        LOG_WARN("Cannot update ref with empty frame");
+        LOG_WARN("Cannot Update ref with Empty frame");
         return;
     }
     
@@ -88,17 +88,17 @@ void FrameDiffAnalyzer::updateRef(const cv::Mat& frame) {
         refUpdateCount_++;
         LOG_INFO("Ref frame updated (default strategy), count=" + std::to_string(refUpdateCount_));
     } else {
-        LOG_WARN("Unknown update strategy: " + updateStrategy_);
+        LOG_WARN("Unknown Update strategy: " + updateStrategy_);
         refFrame_ = frame.clone();
         refUpdateCount_++;
     }
 }
 
-bool FrameDiffAnalyzer::hasRef() {
+bool FrameDiffAnalyzer::HasRef() {
     return !refFrame_.empty();
 }
 
-cv::Mat FrameDiffAnalyzer::getRef() {
+cv::Mat FrameDiffAnalyzer::GetRef() {
     return refFrame_;
 }
 
@@ -109,16 +109,16 @@ void FrameDiffAnalyzer::reset() {
     LOG_INFO("FrameDiffAnalyzer reset");
 }
 
-void FrameDiffAnalyzer::setBoxesForRoi(const std::vector<BoundingBox>& boxes) {
+void FrameDiffAnalyzer::SetBoxesForRoi(const std::vector<BoundingBox>& boxes) {
     currentBoxes_ = boxes;
 }
 
-void FrameDiffAnalyzer::setThreshold(float threshold) {
+void FrameDiffAnalyzer::SetThreshold(float threshold) {
     threshold_ = threshold;
     LOG_INFO("Threshold updated to: " + std::to_string(threshold_));
 }
 
-cv::Mat FrameDiffAnalyzer::extractRoi(const cv::Mat& frame, 
+cv::Mat FrameDiffAnalyzer::ExtractRoi(const cv::Mat& frame, 
                                         const std::vector<BoundingBox>& boxes) {
     if (boxes.empty() || frame.empty()) {
         return cv::Mat();

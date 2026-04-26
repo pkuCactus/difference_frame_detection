@@ -6,8 +6,8 @@
 using namespace diff_det;
 
 TEST(LoggerTest, Init) {
-    Logger& logger = Logger::getInstance();
-    logger.init("/tmp/test_logger.log", "DEBUG");
+    Logger& logger = Logger::GetInstance();
+    logger.Init("/tmp/test_logger.Log", "DEBUG");
     
     LOG_DEBUG("Test debug message");
     LOG_INFO("Test info message");
@@ -16,19 +16,19 @@ TEST(LoggerTest, Init) {
 }
 
 TEST(LoggerTest, LevelFilter) {
-    Logger& logger = Logger::getInstance();
-    logger.init("/tmp/test_logger_level.log", "INFO");
+    Logger& logger = Logger::GetInstance();
+    logger.Init("/tmp/test_logger_level.Log", "INFO");
     
     LOG_DEBUG("This should not appear");
     LOG_INFO("This should appear");
 }
 
 TEST(LoggerTest, SetLevel) {
-    Logger& logger = Logger::getInstance();
-    logger.init("/tmp/test_logger_setlevel.log", "ERROR");
+    Logger& logger = Logger::GetInstance();
+    logger.Init("/tmp/test_logger_setlevel.Log", "ERROR");
     
     LOG_INFO("This should not appear");
     
-    logger.setLevel("INFO");
+    logger.SetLevel("INFO");
     LOG_INFO("This should appear now");
 }

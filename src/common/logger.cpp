@@ -4,7 +4,7 @@
 
 namespace diff_det {
 
-Logger& Logger::getInstance() {
+Logger& Logger::GetInstance() {
     static Logger instance;
     return instance;
 }
@@ -15,7 +15,7 @@ Logger::~Logger() {
     }
 }
 
-void Logger::init(const std::string& filePath, const std::string& level) {
+void Logger::Init(const std::string& filePath, const std::string& level) {
     std::lock_guard<std::mutex> lock(mutex_);
     
     if (fileStream_.is_open()) {
@@ -24,15 +24,15 @@ void Logger::init(const std::string& filePath, const std::string& level) {
     
     fileStream_.open(filePath, std::ios::out | std::ios::app);
     if (!fileStream_.is_open()) {
-        std::cerr << "Failed to open log file: " << filePath << std::endl;
+        std::cerr << "Failed to open Log file: " << filePath << std::endl;
         return;
     }
     
-    currentLevel_ = stringToLevel(level);
+    currentLevel_ = StringToLevel(level);
     initialized_ = true;
 }
 
-void Logger::log(LogLevel level, const std::string& file, int line, const std::string& message) {
+void Logger::Log(LogLevel level, const std::string& file, int32_t line, const std::string& message) {
     if (!initialized_) {
         return;
     }
@@ -49,20 +49,20 @@ void Logger::log(LogLevel level, const std::string& file, int line, const std::s
         fileName = fileName.substr(pos + 1);
     }
     
-    fileStream_ << "[" << getCurrentTime() << "] "
-                << "[" << levelToString(level) << "] "
+    fileStream_ << "[" << GetCurrentTime() << "] "
+                << "[" << LevelToString(level) << "] "
                 << "[" << fileName << ":" << line << "] "
                 << message << std::endl;
     
     fileStream_.flush();
 }
 
-void Logger::setLevel(const std::string& level) {
+void Logger::SetLevel(const std::string& level) {
     std::lock_guard<std::mutex> lock(mutex_);
-    currentLevel_ = stringToLevel(level);
+    currentLevel_ = StringToLevel(level);
 }
 
-std::string Logger::levelToString(LogLevel level) {
+std::string Logger::LevelToString(LogLevel level) {
     switch (level) {
         case LogLevel::DEBUG: return "DEBUG";
         case LogLevel::INFO: return "INFO";
@@ -72,7 +72,7 @@ std::string Logger::levelToString(LogLevel level) {
     }
 }
 
-LogLevel Logger::stringToLevel(const std::string& level) {
+LogLevel Logger::StringToLevel(const std::string& level) {
     if (level == "DEBUG") return LogLevel::DEBUG;
     if (level == "INFO") return LogLevel::INFO;
     if (level == "WARNING") return LogLevel::WARNING;
@@ -80,7 +80,7 @@ LogLevel Logger::stringToLevel(const std::string& level) {
     return LogLevel::INFO;
 }
 
-std::string Logger::getCurrentTime() {
+std::string Logger::GetCurrentTime() {
     std::time_t now = std::time(nullptr);
     std::tm* tm = std::localtime(&now);
     

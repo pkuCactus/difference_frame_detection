@@ -16,7 +16,7 @@ class ICameraCapabilityChecker {
 public:
     virtual ~ICameraCapabilityChecker() = default;
     
-    virtual CapabilityResult check(const CameraDetectionConfig& config) = 0;
+    virtual CapabilityResult Check(const CameraDetectionConfig& config) = 0;
     virtual bool isSupportDetection() = 0;
 };
 
@@ -25,7 +25,7 @@ public:
     CameraCapabilityChecker();
     ~CameraCapabilityChecker();
     
-    CapabilityResult check(const CameraDetectionConfig& config) override;
+    CapabilityResult Check(const CameraDetectionConfig& config) override;
     bool isSupportDetection() override;
     
 private:

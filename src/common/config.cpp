@@ -6,11 +6,11 @@
 
 namespace diff_det {
 
-bool RtspConfig::isValid() const {
+bool RtspConfig::IsValid() const {
     return !url.empty() && reconnectIntervalMs > 0;
 }
 
-std::string RtspConfig::toString() const {
+std::string RtspConfig::ToString() const {
     std::ostringstream oss;
     oss << "RtspConfig:\n";
     oss << "  url: " << url << "\n";
@@ -18,14 +18,14 @@ std::string RtspConfig::toString() const {
     return oss.str();
 }
 
-bool CameraDetectionConfig::isValid() const {
+bool CameraDetectionConfig::IsValid() const {
     if (!enabled) return true;
     return !protocol.empty() && 
            (protocol == "REST" || protocol == "ONVIF") &&
            pollIntervalMs > 0 && timeoutMs > 0;
 }
 
-std::string CameraDetectionConfig::toString() const {
+std::string CameraDetectionConfig::ToString() const {
     std::ostringstream oss;
     oss << "CameraDetectionConfig:\n";
     oss << "  enabled: " << (enabled ? "true" : "false") << "\n";
@@ -40,14 +40,14 @@ std::string CameraDetectionConfig::toString() const {
     return oss.str();
 }
 
-bool LocalDetectionConfig::isValid() const {
+bool LocalDetectionConfig::IsValid() const {
     return !modelType.empty() &&
            (modelType == "yolov3" || modelType == "yolov5" || modelType == "yolov8") &&
            confThreshold >= 0.0f && confThreshold <= 1.0f &&
            detectInterval > 0 && timeoutMs > 0;
 }
 
-std::string LocalDetectionConfig::toString() const {
+std::string LocalDetectionConfig::ToString() const {
     std::ostringstream oss;
     oss << "LocalDetectionConfig:\n";
     oss << "  model_path: " << modelPath << "\n";
@@ -58,7 +58,7 @@ std::string LocalDetectionConfig::toString() const {
     return oss.str();
 }
 
-bool TrackerConfig::isValid() const {
+bool TrackerConfig::IsValid() const {
     if (!enabled) return true;
     return confirmFrames > 0 && maxLostFrames > 0 &&
            highThreshold >= 0.0f && highThreshold <= 1.0f &&
@@ -67,7 +67,7 @@ bool TrackerConfig::isValid() const {
            highThreshold > lowThreshold;
 }
 
-std::string TrackerConfig::toString() const {
+std::string TrackerConfig::ToString() const {
     std::ostringstream oss;
     oss << "TrackerConfig:\n";
     oss << "  enabled: " << (enabled ? "true" : "false") << "\n";
@@ -79,13 +79,13 @@ std::string TrackerConfig::toString() const {
     return oss.str();
 }
 
-bool RefFrameConfig::isValid() const {
+bool RefFrameConfig::IsValid() const {
     return similarityThreshold >= 0.0f && similarityThreshold <= 1.0f &&
            (compareMethod == "ssim" || compareMethod == "pixel_diff" || compareMethod == "phash") &&
            (updateStrategy == "newest" || updateStrategy == "default");
 }
 
-std::string RefFrameConfig::toString() const {
+std::string RefFrameConfig::ToString() const {
     std::ostringstream oss;
     oss << "RefFrameConfig:\n";
     oss << "  similarity_threshold: " << std::fixed << std::setprecision(2) << similarityThreshold << "\n";
@@ -95,11 +95,11 @@ std::string RefFrameConfig::toString() const {
     return oss.str();
 }
 
-bool EventAnalysisConfig::isValid() const {
+bool EventAnalysisConfig::IsValid() const {
     return (mode == "image" || mode == "video") && videoDurationSec > 0;
 }
 
-std::string EventAnalysisConfig::toString() const {
+std::string EventAnalysisConfig::ToString() const {
     std::ostringstream oss;
     oss << "EventAnalysisConfig:\n";
     oss << "  mode: " << mode << "\n";
@@ -107,12 +107,12 @@ std::string EventAnalysisConfig::toString() const {
     return oss.str();
 }
 
-bool LoggingConfig::isValid() const {
+bool LoggingConfig::IsValid() const {
     return (level == "DEBUG" || level == "INFO" || level == "WARNING" || level == "ERROR") &&
            !filePath.empty();
 }
 
-std::string LoggingConfig::toString() const {
+std::string LoggingConfig::ToString() const {
     std::ostringstream oss;
     oss << "LoggingConfig:\n";
     oss << "  level: " << level << "\n";
@@ -120,15 +120,15 @@ std::string LoggingConfig::toString() const {
     return oss.str();
 }
 
-Config Config::fromFile(const std::string& path) {
+Config Config::FromFile(const std::string& path) {
     try {
         YAML::Node node = YAML::LoadFile(path);
-        Config config = fromYaml(node);
+        Config config = FromYaml(node);
         config.configPath_ = path;
         
         LOG_INFO("Config loaded from: " + path);
         
-        auto errors = config.validate();
+        auto errors = config.Validate();
         if (!errors.empty()) {
             LOG_WARN("Config validation warnings:");
             for (auto& err : errors) {
@@ -146,7 +146,7 @@ Config Config::fromFile(const std::string& path) {
     }
 }
 
-Config Config::fromYaml(const YAML::Node& node) {
+Config Config::FromYaml(const YAML::Node& node) {
     Config config;
     
     if (node["rtsp"]) {
@@ -155,13 +155,7 @@ Config Config::fromYaml(const YAML::Node& node) {
             config.rtsp.url = rtspNode["url"].as<std::string>();
         }
         if (rtspNode["reconnect_interval_ms"]) {
-            config.rtsp.reconnectIntervalMs = rtspNode["reconnect_interval_ms"].as<int>();
-        }
-        if (rtspNode["width"]) {
-        }
-        if (rtspNode["height"]) {
-        }
-        if (rtspNode["fps"]) {
+            config.rtsp.reconnectIntervalMs = rtspNode["reconnect_interval_ms"].as<int32_t>();
         }
     }
     
@@ -177,7 +171,7 @@ Config Config::fromYaml(const YAML::Node& node) {
             config.cameraDetection.endpoint = camNode["endpoint"].as<std::string>();
         }
         if (camNode["poll_interval_ms"]) {
-            config.cameraDetection.pollIntervalMs = camNode["poll_interval_ms"].as<int>();
+            config.cameraDetection.pollIntervalMs = camNode["poll_interval_ms"].as<int32_t>();
         }
         if (camNode["camera_id"]) {
             config.cameraDetection.cameraId = camNode["camera_id"].as<std::string>();
@@ -186,13 +180,13 @@ Config Config::fromYaml(const YAML::Node& node) {
             config.cameraDetection.cameraHost = camNode["camera_host"].as<std::string>();
         }
         if (camNode["camera_port"]) {
-            config.cameraDetection.cameraPort = camNode["camera_port"].as<int>();
+            config.cameraDetection.cameraPort = camNode["camera_port"].as<int32_t>();
         }
         if (camNode["capability_url"]) {
             config.cameraDetection.capabilityUrl = camNode["capability_url"].as<std::string>();
         }
         if (camNode["timeout_ms"]) {
-            config.cameraDetection.timeoutMs = camNode["timeout_ms"].as<int>();
+            config.cameraDetection.timeoutMs = camNode["timeout_ms"].as<int32_t>();
         }
     }
     
@@ -208,12 +202,10 @@ Config Config::fromYaml(const YAML::Node& node) {
             config.localDetection.confThreshold = detNode["conf_threshold"].as<float>();
         }
         if (detNode["detect_interval"]) {
-            config.localDetection.detectInterval = detNode["detect_interval"].as<int>();
+            config.localDetection.detectInterval = detNode["detect_interval"].as<int32_t>();
         }
         if (detNode["timeout_ms"]) {
-            config.localDetection.timeoutMs = detNode["timeout_ms"].as<int>();
-        }
-        if (detNode["nms_threshold"]) {
+            config.localDetection.timeoutMs = detNode["timeout_ms"].as<int32_t>();
         }
     }
     
@@ -223,10 +215,10 @@ Config Config::fromYaml(const YAML::Node& node) {
             config.tracker.enabled = trackerNode["enabled"].as<bool>();
         }
         if (trackerNode["confirm_frames"]) {
-            config.tracker.confirmFrames = trackerNode["confirm_frames"].as<int>();
+            config.tracker.confirmFrames = trackerNode["confirm_frames"].as<int32_t>();
         }
         if (trackerNode["max_lost_frames"]) {
-            config.tracker.maxLostFrames = trackerNode["max_lost_frames"].as<int>();
+            config.tracker.maxLostFrames = trackerNode["max_lost_frames"].as<int32_t>();
         }
         if (trackerNode["high_threshold"]) {
             config.tracker.highThreshold = trackerNode["high_threshold"].as<float>();
@@ -261,7 +253,7 @@ Config Config::fromYaml(const YAML::Node& node) {
             config.eventAnalysis.mode = eventNode["mode"].as<std::string>();
         }
         if (eventNode["video_duration_sec"]) {
-            config.eventAnalysis.videoDurationSec = eventNode["video_duration_sec"].as<int>();
+            config.eventAnalysis.videoDurationSec = eventNode["video_duration_sec"].as<int32_t>();
         }
     }
     
@@ -278,11 +270,11 @@ Config Config::fromYaml(const YAML::Node& node) {
     return config;
 }
 
-bool Config::isValid() const {
-    return validate().empty();
+bool Config::IsValid() const {
+    return Validate().empty();
 }
 
-std::vector<ConfigValidationError> Config::validate() const {
+std::vector<ConfigValidationError> Config::Validate() const {
     std::vector<ConfigValidationError> errors;
     
     if (rtsp.url.empty()) {
@@ -360,27 +352,27 @@ std::vector<ConfigValidationError> Config::validate() const {
         errors.emplace_back("logging.level", "Must be DEBUG, INFO, WARNING, or ERROR", "default: INFO");
     }
     if (logging.filePath.empty()) {
-        errors.emplace_back("logging.file_path", "Log file path is required", "default: /data/logs/pipeline.log");
+        errors.emplace_back("logging.file_path", "Log file path is required", "default: /data/logs/pipeline.Log");
     }
     
     return errors;
 }
 
-std::string Config::toString() const {
+std::string Config::ToString() const {
     std::ostringstream oss;
     oss << "=== Full Configuration ===\n";
-    oss << rtsp.toString();
-    oss << cameraDetection.toString();
-    oss << localDetection.toString();
-    oss << tracker.toString();
-    oss << refFrame.toString();
-    oss << eventAnalysis.toString();
-    oss << logging.toString();
+    oss << rtsp.ToString();
+    oss << cameraDetection.ToString();
+    oss << localDetection.ToString();
+    oss << tracker.ToString();
+    oss << refFrame.ToString();
+    oss << eventAnalysis.ToString();
+    oss << logging.ToString();
     oss << "==========================\n";
     return oss.str();
 }
 
-std::string Config::toSummary() const {
+std::string Config::ToSummary() const {
     std::ostringstream oss;
     oss << "RTSP: " << rtsp.url << "\n";
     oss << "Detection: " << (cameraDetection.enabled ? "camera (" + cameraDetection.protocol + ")" : "local (" + localDetection.modelType + ")") << "\n";
@@ -390,7 +382,7 @@ std::string Config::toSummary() const {
     return oss.str();
 }
 
-YAML::Node Config::toYaml() const {
+YAML::Node Config::ToYaml() const {
     YAML::Node node;
     
     node["rtsp"]["url"] = rtsp.url;
@@ -433,8 +425,8 @@ YAML::Node Config::toYaml() const {
     return node;
 }
 
-void Config::saveToFile(const std::string& path) const {
-    YAML::Node node = toYaml();
+void Config::SaveToFile(const std::string& path) const {
+    YAML::Node node = ToYaml();
     
     std::ofstream file(path);
     if (!file.is_open()) {
@@ -448,7 +440,7 @@ void Config::saveToFile(const std::string& path) const {
     LOG_INFO("Config saved to: " + path);
 }
 
-void Config::setChangeCallback(ConfigChangeCallback callback) {
+void Config::SetChangeCallback(ConfigChangeCallback callback) {
     changeCallback_ = callback;
 }
 

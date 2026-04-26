@@ -76,3 +76,5 @@ Testing/
 
 # Runtime temp
 /tmp/difference_detection*
+
+__pycache__/

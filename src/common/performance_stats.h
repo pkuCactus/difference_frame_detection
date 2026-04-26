@@ -15,26 +15,26 @@ class PerformanceStats {
 public:
     PerformanceStats();
     
-    void startTimer(const std::string& name);
-    void endTimer(const std::string& name);
+    void StartTimer(const std::string& name);
+    void EndTimer(const std::string& name);
     
-    void incrementCounter(const std::string& name, int value = 1);
-    void setCounter(const std::string& name, int value);
+    void IncrementCounter(const std::string& name, int32_t value = 1);
+    void SetCounter(const std::string& name, int32_t value);
     
-    double getAverageTime(const std::string& name);
-    int getCounter(const std::string& name);
+    double GetAverageTime(const std::string& name);
+    int32_t GetCounter(const std::string& name);
     
-    std::string getSummary();
-    void reset();
+    std::string GetSummary();
+    void Reset();
     
 private:
     std::mutex mutex_;
     
     std::map<std::string, std::chrono::high_resolution_clock::time_point> startTimes_;
     std::map<std::string, std::vector<double>> timeRecords_;
-    std::map<std::string, int> counters_;
+    std::map<std::string, int32_t> counters_;
     
-    static constexpr int MAX_RECORDS = 1000;
+    static constexpr int32_t MAX_RECORDS = 1000;
 };
 
 class ScopedTimer {

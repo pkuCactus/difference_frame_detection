@@ -15,7 +15,7 @@ enum class State {
     ERROR
 };
 
-inline const char* stateToString(State state) {
+inline const char* StateToString(State state) {
     switch (state) {
         case State::INIT: return "INIT";
         case State::CONNECTING: return "CONNECTING";

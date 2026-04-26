@@ -40,7 +40,7 @@ struct rknn_tensor_attr {
     int32_t n_dims;
     int32_t dims[4];
     int32_t n_elems;
-    int32_t size;
+    int32_t Size;
     rknn_tensor_format fmt;
     rknn_tensor_type type;
     rknn_tensor_qnt_type qnt_type;
@@ -73,28 +73,28 @@ public:
     RknnAdapter();
     ~RknnAdapter();
     
-    bool init(const std::string& modelPath);
-    bool queryInputOutputInfo();
-    bool setInputBuffer(const uint8_t* data, int32_t size);
-    bool run();
-    bool getOutputBuffer(float* data, int32_t size);
+    bool Init(const std::string& modelPath);
+    bool QueryInputOutputInfo();
+    bool SetInputBuffer(const uint8_t* data, int32_t Size);
+    bool Run();
+    bool GetOutputBuffer(float* data, int32_t Size);
     
-    int32_t getInputWidth() const { return inputWidth_; }
-    int32_t getInputHeight() const { return inputHeight_; }
-    int32_t getInputChannel() const { return inputChannel_; }
-    int32_t getInputSize() const { return inputWidth_ * inputHeight_ * inputChannel_; }
+    int32_t GetInputWidth() const { return inputWidth_; }
+    int32_t GetInputHeight() const { return inputHeight_; }
+    int32_t GetInputChannel() const { return inputChannel_; }
+    int32_t GetInputSize() const { return inputWidth_ * inputHeight_ * inputChannel_; }
     
-    int32_t getOutputNum() const { return outputNum_; }
-    int32_t getOutputSize(int32_t index) const;
+    int32_t GetOutputNum() const { return outputNum_; }
+    int32_t GetOutputSize(int32_t index) const;
     
     void release();
     
-    bool isInitialized() const { return initialized_; }
+    bool IsInitialized() const { return initialized_; }
     
-    static bool checkPlatform();
+    static bool CheckPlatform();
     
 private:
-    bool loadModelFile(const std::string& modelPath, std::vector<uint8_t>& modelData);
+    bool LoadModelFile(const std::string& modelPath, std::vector<uint8_t>& modelData);
     
     void* rknnCtx_;
     bool initialized_;

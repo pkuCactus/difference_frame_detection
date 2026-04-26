@@ -31,45 +31,45 @@ RknnDetector::RknnDetector(const LocalDetectionConfig& config)
 }
 
 RknnDetector::~RknnDetector() {
-    releaseBuffers();
+    ReleaseBuffers();
     
     if (initialized_) {
         LOG_INFO("RknnDetector destroyed, total detections: " + std::to_string(totalDetections_));
     }
 }
 
-bool RknnDetector::init() {
+bool RknnDetector::Init() {
     LOG_INFO("Initializing RKNN detector: model=" + config_.modelPath +
              ", model_type=" + config_.modelType +
              ", conf_threshold=" + std::to_string(config_.confThreshold) +
              ", detect_interval=" + std::to_string(config_.detectInterval));
     
-    if (!loadModel()) {
+    if (!LoadModel()) {
         LOG_WARN("Failed to load RKNN model, using stub mode for testing");
         useStubMode_ = true;
         initialized_ = true;
         return true;
     }
     
-    if (!queryModelInfo()) {
+    if (!QueryModelInfo()) {
         LOG_ERROR("Failed to query model info");
-        releaseBuffers();
+        ReleaseBuffers();
         useStubMode_ = true;
         initialized_ = true;
         return true;
     }
     
-    if (!prepareInputBuffers()) {
+    if (!PrepareInputBuffers()) {
         LOG_ERROR("Failed to prepare input buffers");
-        releaseBuffers();
+        ReleaseBuffers();
         useStubMode_ = true;
         initialized_ = true;
         return true;
     }
     
-    if (!prepareOutputBuffers()) {
+    if (!PrepareOutputBuffers()) {
         LOG_ERROR("Failed to prepare output buffers");
-        releaseBuffers();
+        ReleaseBuffers();
         useStubMode_ = true;
         initialized_ = true;
         return true;
@@ -86,22 +86,22 @@ bool RknnDetector::init() {
     return true;
 }
 
-bool RknnDetector::loadModel() {
+bool RknnDetector::LoadModel() {
     std::ifstream file(config_.modelPath, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
         LOG_WARN("Model file not found: " + config_.modelPath + ", using stub mode");
         return false;
     }
     
-    std::streamsize size = file.tellg();
+    std::streamsize Size = file.tellg();
     file.close();
     
-    if (size == 0) {
-        LOG_WARN("Model file is empty: " + config_.modelPath);
+    if (Size == 0) {
+        LOG_WARN("Model file is Empty: " + config_.modelPath);
         return false;
     }
     
-    LOG_INFO("Model file found: " + config_.modelPath + ", size=" + std::to_string(size) + " bytes");
+    LOG_INFO("Model file found: " + config_.modelPath + ", Size=" + std::to_string(Size) + " bytes");
     
     LOG_INFO("Note: RKNN model requires RKNN Runtime SDK on RK3566 platform");
     LOG_INFO("      Input format: NCHW (Channel x Height x Width)");
@@ -110,19 +110,19 @@ bool RknnDetector::loadModel() {
     return false;
 }
 
-bool RknnDetector::queryModelInfo() {
+bool RknnDetector::QueryModelInfo() {
     modelInfo_.version = 1;
     modelInfo_.input_num = 1;
     modelInfo_.output_num = 1;
     
     modelInfo_.inputs.resize(1);
     modelInfo_.inputs[0].index = 0;
-    modelInfo_.inputs[0].width = inputWidth_;
-    modelInfo_.inputs[0].height = inputHeight_;
+    modelInfo_.inputs[0].Width = inputWidth_;
+    modelInfo_.inputs[0].Height = inputHeight_;
     modelInfo_.inputs[0].channel = inputChannel_;
     modelInfo_.inputs[0].format = 1;
     modelInfo_.inputs[0].type = 0;
-    modelInfo_.inputs[0].size = inputWidth_ * inputHeight_ * inputChannel_;
+    modelInfo_.inputs[0].Size = inputWidth_ * inputHeight_ * inputChannel_;
     
     modelInfo_.outputs.resize(1);
     modelInfo_.outputs[0].index = 0;
@@ -132,17 +132,17 @@ bool RknnDetector::queryModelInfo() {
         modelInfo_.outputs[0].dims[0] = 1;
         modelInfo_.outputs[0].dims[1] = 25200;
         modelInfo_.outputs[0].dims[2] = 85;
-        modelInfo_.outputs[0].size = 25200 * 85 * sizeof(float);
+        modelInfo_.outputs[0].Size = 25200 * 85 * sizeof(float);
     } else if (config_.modelType == "yolov8") {
         modelInfo_.outputs[0].dims[0] = 1;
         modelInfo_.outputs[0].dims[1] = 8400;
         modelInfo_.outputs[0].dims[2] = 84;
-        modelInfo_.outputs[0].size = 8400 * 84 * sizeof(float);
+        modelInfo_.outputs[0].Size = 8400 * 84 * sizeof(float);
     } else {
         modelInfo_.outputs[0].dims[0] = 1;
         modelInfo_.outputs[0].dims[1] = 25200;
         modelInfo_.outputs[0].dims[2] = 85;
-        modelInfo_.outputs[0].size = 25200 * 85 * sizeof(float);
+        modelInfo_.outputs[0].Size = 25200 * 85 * sizeof(float);
     }
     
     modelInfo_.outputs[0].want_float = 1;
@@ -150,16 +150,16 @@ bool RknnDetector::queryModelInfo() {
     LOG_INFO("Model info: input_num=" + std::to_string(modelInfo_.input_num) +
              ", output_num=" + std::to_string(modelInfo_.output_num) +
              ", input_format=NCHW" +
-             ", output_size=" + std::to_string(modelInfo_.outputs[0].size));
+             ", output_size=" + std::to_string(modelInfo_.outputs[0].Size));
     
     return true;
 }
 
-bool RknnDetector::prepareInputBuffers() {
+bool RknnDetector::PrepareInputBuffers() {
     int32_t inputSize = inputWidth_ * inputHeight_ * inputChannel_;
     inputBuffer_.resize(inputSize);
     
-    LOG_INFO("Input buffer prepared (NCHW float): size=" + std::to_string(inputSize) + 
+    LOG_INFO("Input buffer prepared (NCHW float): Size=" + std::to_string(inputSize) + 
              " floats = " + std::to_string(inputChannel_) + "x" +
              std::to_string(inputHeight_) + "x" + std::to_string(inputWidth_) +
              ", bytes=" + std::to_string(inputSize * sizeof(float)));
@@ -167,16 +167,16 @@ bool RknnDetector::prepareInputBuffers() {
     return true;
 }
 
-bool RknnDetector::prepareOutputBuffers() {
-    int32_t outputSize = modelInfo_.outputs[0].size / sizeof(float);
+bool RknnDetector::PrepareOutputBuffers() {
+    int32_t outputSize = modelInfo_.outputs[0].Size / sizeof(float);
     outputBuffer_.resize(outputSize);
     
-    LOG_INFO("Output buffer prepared: size=" + std::to_string(outputSize) + " floats");
+    LOG_INFO("Output buffer prepared: Size=" + std::to_string(outputSize) + " floats");
     
     return true;
 }
 
-void RknnDetector::releaseBuffers() {
+void RknnDetector::ReleaseBuffers() {
     inputBuffer_.clear();
     outputBuffer_.clear();
     modelLoaded_ = false;
@@ -187,7 +187,7 @@ void RknnDetector::releaseBuffers() {
     }
 }
 
-std::vector<BoundingBox> RknnDetector::detect(const cv::Mat& frame) {
+std::vector<BoundingBox> RknnDetector::Detect(const cv::Mat& frame) {
     if (!initialized_) {
         LOG_ERROR("Detector not initialized");
         return {};
@@ -201,29 +201,29 @@ std::vector<BoundingBox> RknnDetector::detect(const cv::Mat& frame) {
     auto startTime = std::chrono::high_resolution_clock::now();
     
     if (perfStats_) {
-        perfStats_->startTimer("detector_preprocess");
+        perfStats_->StartTimer("detector_preprocess");
     }
     
     float scaleX, scaleY;
     int32_t offsetX, offsetY;
-    cv::Mat preprocessed = preprocess(frame, scaleX, scaleY, offsetX, offsetY);
+    cv::Mat preprocessed = Preprocess(frame, scaleX, scaleY, offsetX, offsetY);
     
     if (perfStats_) {
-        perfStats_->endTimer("detector_preprocess");
-        perfStats_->startTimer("detector_inference");
+        perfStats_->EndTimer("detector_preprocess");
+        perfStats_->StartTimer("detector_inference");
     }
     
-    std::vector<float> outputs = runInference(preprocessed);
+    std::vector<float> outputs = RunInference(preprocessed);
     
     if (perfStats_) {
-        perfStats_->endTimer("detector_inference");
-        perfStats_->startTimer("detector_postprocess");
+        perfStats_->EndTimer("detector_inference");
+        perfStats_->StartTimer("detector_postprocess");
     }
     
     std::vector<BoundingBox> boxes;
     
     if (!outputs.empty()) {
-        boxes = postprocess_->process(
+        boxes = postprocess_->Process(
             outputs,
             static_cast<int32_t>(outputs.size()),
             inputWidth_,
@@ -237,7 +237,7 @@ std::vector<BoundingBox> RknnDetector::detect(const cv::Mat& frame) {
     }
     
     if (perfStats_) {
-        perfStats_->endTimer("detector_postprocess");
+        perfStats_->EndTimer("detector_postprocess");
     }
     
     auto endTime = std::chrono::high_resolution_clock::now();
@@ -246,10 +246,10 @@ std::vector<BoundingBox> RknnDetector::detect(const cv::Mat& frame) {
     
     totalDetections_++;
     if (perfStats_) {
-        perfStats_->incrementCounter("total_detections");
-        perfStats_->incrementCounter("detection_time_ms", static_cast<int32_t>(lastDetectTime_));
+        perfStats_->IncrementCounter("total_detections");
+        perfStats_->IncrementCounter("detection_time_ms", static_cast<int32_t>(lastDetectTime_));
         if (!boxes.empty()) {
-            perfStats_->incrementCounter("detections_with_person", static_cast<int32_t>(boxes.size()));
+            perfStats_->IncrementCounter("detections_with_person", static_cast<int32_t>(boxes.size()));
         }
     }
     
@@ -269,10 +269,10 @@ std::vector<BoundingBox> RknnDetector::detect(const cv::Mat& frame) {
     return boxes;
 }
 
-void RknnDetector::setConfThreshold(float threshold) {
+void RknnDetector::SetConfThreshold(float threshold) {
     config_.confThreshold = threshold;
     if (postprocess_) {
-        postprocess_->setConfThreshold(threshold);
+        postprocess_->SetConfThreshold(threshold);
     }
     LOG_INFO("Confidence threshold updated to: " + std::to_string(threshold));
 }
@@ -281,15 +281,15 @@ void RknnDetector::setPerformanceStats(PerformanceStats* stats) {
     perfStats_ = stats;
 }
 
-double RknnDetector::getLastDetectTime() {
+double RknnDetector::GetLastDetectTime() {
     return lastDetectTime_;
 }
 
-int32_t RknnDetector::getTotalDetections() {
+int32_t RknnDetector::GetTotalDetections() {
     return totalDetections_;
 }
 
-cv::Mat RknnDetector::preprocess(const cv::Mat& frame, 
+cv::Mat RknnDetector::Preprocess(const cv::Mat& frame, 
                                   float& scaleX, float& scaleY,
                                   int32_t& offsetX, int32_t& offsetY) {
     lastFrameWidth_ = frame.cols;
@@ -331,12 +331,12 @@ cv::Mat RknnDetector::preprocess(const cv::Mat& frame,
     return letterbox;
 }
 
-void RknnDetector::fillInputBuffer(const cv::Mat& preprocessed) {
+void RknnDetector::FillInputBuffer(const cv::Mat& preprocessed) {
     int32_t expectedPixels = inputWidth_ * inputHeight_ * inputChannel_;
     int32_t actualPixels = static_cast<int32_t>(preprocessed.total() * preprocessed.channels());
     
     if (actualPixels != expectedPixels) {
-        LOG_ERROR("Input size mismatch: expected " + std::to_string(expectedPixels) +
+        LOG_ERROR("Input Size mismatch: expected " + std::to_string(expectedPixels) +
                   " pixels, got " + std::to_string(actualPixels));
         return;
     }
@@ -361,25 +361,25 @@ void RknnDetector::fillInputBuffer(const cv::Mat& preprocessed) {
               ", normalized=/255.0, total=" + std::to_string(inputBuffer_.size()) + " floats");
 }
 
-std::vector<float> RknnDetector::runInference(const cv::Mat& preprocessed) {
+std::vector<float> RknnDetector::RunInference(const cv::Mat& preprocessed) {
     if (useStubMode_) {
         LOG_DEBUG("Running inference in stub mode (no actual RKNN inference)");
         return {};
     }
     
-    fillInputBuffer(preprocessed);
+    FillInputBuffer(preprocessed);
     
-    LOG_DEBUG("RKNN inference would run on RK3566 NPU here");
+    LOG_DEBUG("RKNN inference would Run on RK3566 NPU here");
     LOG_DEBUG("Input (NCHW): " + std::to_string(inputChannel_) + "x" +
               std::to_string(inputHeight_) + "x" + std::to_string(inputWidth_));
-    LOG_DEBUG("Output: " + std::to_string(modelInfo_.outputs[0].size) + " bytes");
+    LOG_DEBUG("Output: " + std::to_string(modelInfo_.outputs[0].Size) + " bytes");
     
-    std::vector<float> outputs = parseOutputs();
+    std::vector<float> outputs = ParseOutputs();
     
     return outputs;
 }
 
-std::vector<float> RknnDetector::parseOutputs() {
+std::vector<float> RknnDetector::ParseOutputs() {
     std::vector<float> outputs;
     
     if (outputBuffer_.empty()) {

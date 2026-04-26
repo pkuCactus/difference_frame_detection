@@ -12,16 +12,16 @@ struct BoundingBox {
     float x2;
     float y2;
     float conf;
-    int label;
+    int32_t label;
     
     BoundingBox() : x1(0), y1(0), x2(0), y2(0), conf(0), label(0) {}
     
-    BoundingBox(float _x1, float _y1, float _x2, float _y2, float _conf, int _label)
-        : x1(_x1), y1(_y1), x2(_x2), y2(_y2), conf(_conf), label(_label) {}
+    BoundingBox(float x1Val, float y1Val, float x2Val, float y2Val, float confVal, int32_t labelVal)
+        : x1(x1Val), y1(y1Val), x2(x2Val), y2(y2Val), conf(confVal), label(labelVal) {}
     
-    float width() const { return x2 - x1; }
-    float height() const { return y2 - y1; }
-    float area() const { return width() * height(); }
+    float Width() const { return x2 - x1; }
+    float Height() const { return y2 - y1; }
+    float Area() const { return Width() * Height(); }
 };
 
 enum class TrackState {
@@ -32,7 +32,7 @@ enum class TrackState {
 };
 
 struct Track {
-    int trackId;
+    int32_t trackId;
     float x;
     float y;
     float w;
@@ -42,22 +42,22 @@ struct Track {
     
     Track() : trackId(-1), x(0), y(0), w(0), h(0), score(0), state(TrackState::Tentative) {}
     
-    BoundingBox toBoundingBox() const {
+    BoundingBox ToBoundingBox() const {
         return BoundingBox(x, y, x + w, y + h, score, 0);
     }
 };
 
 struct CameraDetectionResult {
-    int objNum;
+    int32_t objNum;
     std::vector<BoundingBox> objs;
     int64_t timeStamp;
-    int frameId;
+    int32_t frameId;
     
     CameraDetectionResult() : objNum(0), timeStamp(0), frameId(-1) {}
 };
 
 struct FrameInfo {
-    int frameId;
+    int32_t frameId;
     int64_t timeStamp;
     bool hasPerson;
     std::vector<BoundingBox> boxes;

@@ -17,11 +17,11 @@ enum class LogLevel {
 
 class Logger {
 public:
-    static Logger& getInstance();
+    static Logger& GetInstance();
     
-    void init(const std::string& filePath, const std::string& level);
-    void log(LogLevel level, const std::string& file, int line, const std::string& message);
-    void setLevel(const std::string& level);
+    void Init(const std::string& filePath, const std::string& level);
+    void Log(LogLevel level, const std::string& file, int32_t line, const std::string& message);
+    void SetLevel(const std::string& level);
     
 private:
     Logger() = default;
@@ -30,9 +30,9 @@ private:
     Logger(const Logger&) = delete;
     Logger& operator=(const Logger&) = delete;
     
-    std::string levelToString(LogLevel level);
-    LogLevel stringToLevel(const std::string& level);
-    std::string getCurrentTime();
+    std::string LevelToString(LogLevel level);
+    LogLevel StringToLevel(const std::string& level);
+    std::string GetCurrentTime();
     
     std::ofstream fileStream_;
     std::mutex mutex_;
@@ -40,9 +40,9 @@ private:
     bool initialized_ = false;
 };
 
-#define LOG_DEBUG(msg) diff_det::Logger::getInstance().log(diff_det::LogLevel::DEBUG, __FILE__, __LINE__, msg)
-#define LOG_INFO(msg) diff_det::Logger::getInstance().log(diff_det::LogLevel::INFO, __FILE__, __LINE__, msg)
-#define LOG_WARN(msg) diff_det::Logger::getInstance().log(diff_det::LogLevel::WARNING, __FILE__, __LINE__, msg)
-#define LOG_ERROR(msg) diff_det::Logger::getInstance().log(diff_det::LogLevel::ERROR, __FILE__, __LINE__, msg)
+#define LOG_DEBUG(msg) diff_det::Logger::GetInstance().Log(diff_det::LogLevel::DEBUG, __FILE__, __LINE__, msg)
+#define LOG_INFO(msg) diff_det::Logger::GetInstance().Log(diff_det::LogLevel::INFO, __FILE__, __LINE__, msg)
+#define LOG_WARN(msg) diff_det::Logger::GetInstance().Log(diff_det::LogLevel::WARNING, __FILE__, __LINE__, msg)
+#define LOG_ERROR(msg) diff_det::Logger::GetInstance().Log(diff_det::LogLevel::ERROR, __FILE__, __LINE__, msg)
 
 }

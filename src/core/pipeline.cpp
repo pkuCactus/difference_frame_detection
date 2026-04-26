@@ -14,11 +14,11 @@ Pipeline::Pipeline(const Config& config)
 }
 
 Pipeline::~Pipeline() {
-    stop();
+    Stop();
     LOG_INFO("Pipeline destroyed");
 }
 
-void Pipeline::start() {
+void Pipeline::Start() {
     if (running_) {
         LOG_WARN("Pipeline already running");
         return;
@@ -36,7 +36,7 @@ void Pipeline::start() {
     LOG_INFO("Pipeline started successfully");
 }
 
-void Pipeline::stop() {
+void Pipeline::Stop() {
     if (!running_) {
         return;
     }
@@ -47,7 +47,7 @@ void Pipeline::stop() {
     paused_ = false;
     
     if (stateMachine_) {
-        stateMachine_->stop();
+        stateMachine_->Stop();
     }
     
     if (workerThread_ && workerThread_->joinable()) {
@@ -60,37 +60,37 @@ void Pipeline::stop() {
     LOG_INFO("Pipeline stopped");
 }
 
-void Pipeline::pause() {
+void Pipeline::Pause() {
     if (!running_) {
-        LOG_WARN("Pipeline not running, cannot pause");
+        LOG_WARN("Pipeline not running, cannot Pause");
         return;
     }
     
     paused_ = true;
     
     if (stateMachine_) {
-        stateMachine_->pause();
+        stateMachine_->Pause();
     }
     
     LOG_INFO("Pipeline paused");
 }
 
-void Pipeline::resume() {
+void Pipeline::Resume() {
     if (!running_) {
-        LOG_WARN("Pipeline not running, cannot resume");
+        LOG_WARN("Pipeline not running, cannot Resume");
         return;
     }
     
     paused_ = false;
     
     if (stateMachine_) {
-        stateMachine_->resume();
+        stateMachine_->Resume();
     }
     
     LOG_INFO("Pipeline resumed");
 }
 
-bool Pipeline::isRunning() const {
+bool Pipeline::IsRunning() const {
     return running_;
 }
 
@@ -98,30 +98,30 @@ bool Pipeline::isPaused() const {
     return paused_;
 }
 
-State Pipeline::getCurrentState() const {
+State Pipeline::GetCurrentState() const {
     if (stateMachine_) {
-        return stateMachine_->currentState();
+        return stateMachine_->CurrentState();
     }
     return State::INIT;
 }
 
-int Pipeline::getFrameCount() const {
+int Pipeline::GetFrameCount() const {
     if (stateMachine_) {
-        return stateMachine_->getFrameCount();
+        return stateMachine_->GetFrameCount();
     }
     return 0;
 }
 
-int Pipeline::getEventCount() const {
+int Pipeline::GetEventCount() const {
     if (stateMachine_) {
-        return stateMachine_->getEventCount();
+        return stateMachine_->GetEventCount();
     }
     return 0;
 }
 
-PipelineStats Pipeline::getStats() const {
+PipelineStats Pipeline::GetStats() const {
     if (stateMachine_) {
-        return stateMachine_->getStats();
+        return stateMachine_->GetStats();
     }
     return PipelineStats();
 }
@@ -144,7 +144,7 @@ void Pipeline::runThread() {
     LOG_INFO("Pipeline worker thread started");
     
     if (stateMachine_) {
-        stateMachine_->run();
+        stateMachine_->Run();
     }
     
     LOG_INFO("Pipeline worker thread finished");

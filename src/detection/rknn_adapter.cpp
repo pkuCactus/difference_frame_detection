@@ -20,7 +20,7 @@ RknnAdapter::~RknnAdapter() {
     release();
 }
 
-bool RknnAdapter::checkPlatform() {
+bool RknnAdapter::CheckPlatform() {
 #ifdef RK3566_PLATFORM
     LOG_INFO("Running on RK3566 platform with RKNN SDK");
     return true;
@@ -30,22 +30,22 @@ bool RknnAdapter::checkPlatform() {
 #endif
 }
 
-bool RknnAdapter::init(const std::string& modelPath) {
+bool RknnAdapter::Init(const std::string& modelPath) {
     LOG_INFO("Initializing RKNN adapter with model: " + modelPath);
     
-    if (!checkPlatform()) {
+    if (!CheckPlatform()) {
         LOG_WARN("RK3566 platform not detected, using stub mode");
         initialized_ = true;
         return true;
     }
     
     std::vector<uint8_t> modelData;
-    if (!loadModelFile(modelPath, modelData)) {
+    if (!LoadModelFile(modelPath, modelData)) {
         LOG_ERROR("Failed to load model file: " + modelPath);
         return false;
     }
     
-    LOG_INFO("Model loaded: size=" + std::to_string(modelData.size()) + " bytes");
+    LOG_INFO("Model loaded: Size=" + std::to_string(modelData.size()) + " bytes");
     
 #ifdef RK3566_PLATFORM
     
@@ -114,7 +114,7 @@ bool RknnAdapter::init(const std::string& modelPath) {
              std::to_string(outputAttrs_[0].dims[2]) + "x" +
              std::to_string(outputAttrs_[0].dims[3]));
     
-    inputData_.resize(getInputSize());
+    inputData_.resize(GetInputSize());
     outputData_.resize(outputSize);
     
 #endif
@@ -123,7 +123,7 @@ bool RknnAdapter::init(const std::string& modelPath) {
     return true;
 }
 
-bool RknnAdapter::queryInputOutputInfo() {
+bool RknnAdapter::QueryInputOutputInfo() {
     if (!initialized_) {
         LOG_ERROR("RKNN adapter not initialized");
         return false;
@@ -135,7 +135,7 @@ bool RknnAdapter::queryInputOutputInfo() {
         LOG_INFO("Input " + std::to_string(i) + ": format=" + 
                  std::to_string(inputAttrs_[i].fmt) +
                  ", type=" + std::to_string(inputAttrs_[i].type) +
-                 ", size=" + std::to_string(inputAttrs_[i].size) +
+                 ", Size=" + std::to_string(inputAttrs_[i].Size) +
                  ", dims=[" + std::to_string(inputAttrs_[i].dims[0]) + "," +
                  std::to_string(inputAttrs_[i].dims[1]) + "," +
                  std::to_string(inputAttrs_[i].dims[2]) + "," +
@@ -143,7 +143,7 @@ bool RknnAdapter::queryInputOutputInfo() {
     }
     
     for (int32_t i = 0; i < outputNum_; ++i) {
-        LOG_INFO("Output " + std::to_string(i) + ": size=" + std::to_string(outputAttrs_[i].size) +
+        LOG_INFO("Output " + std::to_string(i) + ": Size=" + std::to_string(outputAttrs_[i].Size) +
                  ", n_elems=" + std::to_string(outputAttrs_[i].n_elems) +
                  ", dims=[" + std::to_string(outputAttrs_[i].dims[0]) + "," +
                  std::to_string(outputAttrs_[i].dims[1]) + "," +
@@ -156,16 +156,16 @@ bool RknnAdapter::queryInputOutputInfo() {
     return true;
 }
 
-bool RknnAdapter::setInputBuffer(const uint8_t* data, int32_t size) {
+bool RknnAdapter::SetInputBuffer(const uint8_t* data, int32_t Size) {
     if (!initialized_) {
         LOG_ERROR("RKNN adapter not initialized");
         return false;
     }
     
-    int32_t expectedSize = getInputSize();
-    if (size != expectedSize) {
-        LOG_ERROR("Input size mismatch: expected " + std::to_string(expectedSize) +
-                  ", got " + std::to_string(size));
+    int32_t expectedSize = GetInputSize();
+    if (Size != expectedSize) {
+        LOG_ERROR("Input Size mismatch: expected " + std::to_string(expectedSize) +
+                  ", got " + std::to_string(Size));
         return false;
     }
     
@@ -187,7 +187,7 @@ bool RknnAdapter::setInputBuffer(const uint8_t* data, int32_t size) {
         }
     }
     
-    std::memcpy(inputData_.data(), data, size);
+    std::memcpy(inputData_.data(), data, Size);
     
     int32_t ret = rknn_inputs_set(rknnCtx_, inputNum_, inputs_.data());
     if (ret < 0) {
@@ -195,18 +195,18 @@ bool RknnAdapter::setInputBuffer(const uint8_t* data, int32_t size) {
         return false;
     }
     
-    LOG_DEBUG("Input buffer set: " + std::to_string(size) + " bytes (NCHW format)");
+    LOG_DEBUG("Input buffer set: " + std::to_string(Size) + " bytes (NCHW format)");
     
 #else
     
-    LOG_DEBUG("Input buffer set (stub mode): " + std::to_string(size) + " bytes");
+    LOG_DEBUG("Input buffer set (stub mode): " + std::to_string(Size) + " bytes");
     
 #endif
     
     return true;
 }
 
-bool RknnAdapter::run() {
+bool RknnAdapter::Run() {
     if (!initialized_) {
         LOG_ERROR("RKNN adapter not initialized");
         return false;
@@ -246,7 +246,7 @@ bool RknnAdapter::run() {
     return true;
 }
 
-bool RknnAdapter::getOutputBuffer(float* data, int32_t size) {
+bool RknnAdapter::GetOutputBuffer(float* data, int32_t Size) {
     if (!initialized_) {
         LOG_ERROR("RKNN adapter not initialized");
         return false;
@@ -255,28 +255,28 @@ bool RknnAdapter::getOutputBuffer(float* data, int32_t size) {
 #ifdef RK3566_PLATFORM
     
     int32_t outputSize = outputAttrs_[0].n_elems;
-    if (size != outputSize) {
-        LOG_ERROR("Output size mismatch: expected " + std::to_string(outputSize) +
-                  ", got " + std::to_string(size));
+    if (Size != outputSize) {
+        LOG_ERROR("Output Size mismatch: expected " + std::to_string(outputSize) +
+                  ", got " + std::to_string(Size));
         return false;
     }
     
-    std::memcpy(data, outputData_.data(), size * sizeof(float));
+    std::memcpy(data, outputData_.data(), Size * sizeof(float));
     
     rknn_outputs_release(rknnCtx_, outputNum_, outputs_.data());
     
-    LOG_DEBUG("Output buffer retrieved: " + std::to_string(size) + " floats");
+    LOG_DEBUG("Output buffer retrieved: " + std::to_string(Size) + " floats");
     
 #else
     
-    LOG_DEBUG("RKNN stub mode: output buffer empty");
+    LOG_DEBUG("RKNN stub mode: output buffer Empty");
     
 #endif
     
     return true;
 }
 
-int32_t RknnAdapter::getOutputSize(int32_t index) const {
+int32_t RknnAdapter::GetOutputSize(int32_t index) const {
     if (index >= outputNum_) {
         return 0;
     }
@@ -312,26 +312,26 @@ void RknnAdapter::release() {
     LOG_INFO("RKNN adapter released");
 }
 
-bool RknnAdapter::loadModelFile(const std::string& modelPath, std::vector<uint8_t>& modelData) {
+bool RknnAdapter::LoadModelFile(const std::string& modelPath, std::vector<uint8_t>& modelData) {
     std::ifstream file(modelPath, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
         LOG_ERROR("Cannot open model file: " + modelPath);
         return false;
     }
     
-    std::streamsize size = file.tellg();
+    std::streamsize Size = file.tellg();
     file.seekg(0, std::ios::beg);
     
-    modelData.resize(static_cast<size_t>(size));
+    modelData.resize(static_cast<size_t>(Size));
     
-    if (!file.read(reinterpret_cast<char*>(modelData.data()), size)) {
+    if (!file.read(reinterpret_cast<char*>(modelData.data()), Size)) {
         LOG_ERROR("Failed to read model file: " + modelPath);
         return false;
     }
     
     file.close();
     
-    LOG_INFO("Model file loaded: " + modelPath + ", size=" + std::to_string(size));
+    LOG_INFO("Model file loaded: " + modelPath + ", Size=" + std::to_string(Size));
     
     return true;
 }

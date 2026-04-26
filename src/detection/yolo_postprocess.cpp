@@ -10,7 +10,7 @@ YoloPostprocess::YoloPostprocess(const std::string& modelType, float confThresho
     , nmsThreshold_(nmsThreshold) {
 }
 
-std::vector<BoundingBox> YoloPostprocess::process(const std::vector<float>& outputs,
+std::vector<BoundingBox> YoloPostprocess::Process(const std::vector<float>& outputs,
                                                     int numOutputs,
                                                     int outputWidth,
                                                     int outputHeight,
@@ -21,10 +21,10 @@ std::vector<BoundingBox> YoloPostprocess::process(const std::vector<float>& outp
                                                     int offsetX,
                                                     int offsetY) {
     if (modelType_ == "yolov5" || modelType_ == "yolov3") {
-        return processYolov5(outputs, numOutputs, originalWidth, originalHeight,
+        return ProcessYolov5(outputs, numOutputs, originalWidth, originalHeight,
                              scaleX, scaleY, offsetX, offsetY);
     } else if (modelType_ == "yolov8") {
-        return processYolov8(outputs, numOutputs, originalWidth, originalHeight,
+        return ProcessYolov8(outputs, numOutputs, originalWidth, originalHeight,
                              scaleX, scaleY, offsetX, offsetY);
     }
     
@@ -32,7 +32,7 @@ std::vector<BoundingBox> YoloPostprocess::process(const std::vector<float>& outp
     return {};
 }
 
-std::vector<BoundingBox> YoloPostprocess::processYolov5(const std::vector<float>& outputs,
+std::vector<BoundingBox> YoloPostprocess::ProcessYolov5(const std::vector<float>& outputs,
                                                          int numOutputs,
                                                          int originalWidth,
                                                          int originalHeight,
@@ -78,14 +78,14 @@ std::vector<BoundingBox> YoloPostprocess::processYolov5(const std::vector<float>
         box.conf = finalConf;
         box.label = classIdx;
         
-        box = restoreBox(box, scaleX, scaleY, offsetX, offsetY);
+        box = RestoreBox(box, scaleX, scaleY, offsetX, offsetY);
         boxes.push_back(box);
     }
     
     return nms(boxes);
 }
 
-std::vector<BoundingBox> YoloPostprocess::processYolov8(const std::vector<float>& outputs,
+std::vector<BoundingBox> YoloPostprocess::ProcessYolov8(const std::vector<float>& outputs,
                                                          int numOutputs,
                                                          int originalWidth,
                                                          int originalHeight,
@@ -127,14 +127,14 @@ std::vector<BoundingBox> YoloPostprocess::processYolov8(const std::vector<float>
         box.conf = maxClassConf;
         box.label = classIdx;
         
-        box = restoreBox(box, scaleX, scaleY, offsetX, offsetY);
+        box = RestoreBox(box, scaleX, scaleY, offsetX, offsetY);
         boxes.push_back(box);
     }
     
     return nms(boxes);
 }
 
-std::vector<BoundingBox> YoloPostprocess::processYolov3(const std::vector<float>& outputs,
+std::vector<BoundingBox> YoloPostprocess::ProcessYolov3(const std::vector<float>& outputs,
                                                          int numOutputs,
                                                          int originalWidth,
                                                          int originalHeight,
@@ -142,7 +142,7 @@ std::vector<BoundingBox> YoloPostprocess::processYolov3(const std::vector<float>
                                                          float scaleY,
                                                          int offsetX,
                                                          int offsetY) {
-    return processYolov5(outputs, numOutputs, originalWidth, originalHeight,
+    return ProcessYolov5(outputs, numOutputs, originalWidth, originalHeight,
                          scaleX, scaleY, offsetX, offsetY);
 }
 
@@ -176,8 +176,8 @@ std::vector<BoundingBox> YoloPostprocess::nms(std::vector<BoundingBox>& boxes) {
             float y2 = std::min(boxes[i].y2, boxes[j].y2);
             
             float intersection = std::max(0.0f, x2 - x1) * std::max(0.0f, y2 - y1);
-            float areaI = boxes[i].area();
-            float areaJ = boxes[j].area();
+            float areaI = boxes[i].Area();
+            float areaJ = boxes[j].Area();
             float unionArea = areaI + areaJ - intersection;
             
             float iou = intersection / unionArea;
@@ -191,7 +191,7 @@ std::vector<BoundingBox> YoloPostprocess::nms(std::vector<BoundingBox>& boxes) {
     return result;
 }
 
-BoundingBox YoloPostprocess::restoreBox(const BoundingBox& box,
+BoundingBox YoloPostprocess::RestoreBox(const BoundingBox& box,
                                           float scaleX, float scaleY,
                                           int offsetX, int offsetY) {
     BoundingBox restored;

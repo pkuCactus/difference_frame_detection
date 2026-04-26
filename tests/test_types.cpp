@@ -27,9 +27,9 @@ TEST(BoundingBoxTest, Constructor) {
 TEST(BoundingBoxTest, WidthHeightArea) {
     BoundingBox box(0, 0, 100, 50, 0.9f, 0);
     
-    EXPECT_FLOAT_EQ(box.width(), 100);
-    EXPECT_FLOAT_EQ(box.height(), 50);
-    EXPECT_FLOAT_EQ(box.area(), 5000);
+    EXPECT_FLOAT_EQ(box.Width(), 100);
+    EXPECT_FLOAT_EQ(box.Height(), 50);
+    EXPECT_FLOAT_EQ(box.Area(), 5000);
 }
 
 TEST(TrackTest, DefaultValues) {
@@ -52,7 +52,7 @@ TEST(TrackTest, ToBoundingBox) {
     track.h = 50;
     track.score = 0.9f;
     
-    BoundingBox box = track.toBoundingBox();
+    BoundingBox box = track.ToBoundingBox();
     
     EXPECT_FLOAT_EQ(box.x1, 10);
     EXPECT_FLOAT_EQ(box.y1, 20);

@@ -14,9 +14,9 @@ class KalmanFilter {
 public:
     KalmanFilter();
     
-    void init(const BoundingBox& bbox);
-    void predict();
-    void update(const BoundingBox& bbox);
+    void Init(const BoundingBox& bbox);
+    void Predict();
+    void Update(const BoundingBox& bbox);
     
     cv::Mat getState() const;
     BoundingBox getBox() const;
@@ -34,8 +34,8 @@ class TrackObject {
 public:
     TrackObject(const BoundingBox& bbox, int trackId, int frameId, int confirmFrames = 3);
     
-    void predict();
-    void update(const BoundingBox& bbox, int frameId);
+    void Predict();
+    void Update(const BoundingBox& bbox, int frameId);
     
     int getTrackId() const { return trackId_; }
     TrackState getState() const { return state_; }
@@ -67,9 +67,9 @@ public:
     ByteTracker(const TrackerConfig& config);
     ~ByteTracker();
     
-    std::vector<Track> update(const cv::Mat& frame, 
+    std::vector<Track> Update(const cv::Mat& frame, 
                               const std::vector<BoundingBox>& boxes) override;
-    std::vector<Track> predict() override;
+    std::vector<Track> Predict() override;
     void reset() override;
     
 private:

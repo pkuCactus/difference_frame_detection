@@ -19,7 +19,7 @@ CameraDetectionReader::CameraDetectionReader()
 CameraDetectionReader::~CameraDetectionReader() {
 }
 
-bool CameraDetectionReader::init(const CameraDetectionConfig& config) {
+bool CameraDetectionReader::Init(const CameraDetectionConfig& config) {
     config_ = config;
     resultQueue_.clear();
     
@@ -30,7 +30,7 @@ bool CameraDetectionReader::init(const CameraDetectionConfig& config) {
     return true;
 }
 
-CameraDetectionResult CameraDetectionReader::getDetectionResult() {
+CameraDetectionResult CameraDetectionReader::GetDetectionResult() {
     auto now = std::chrono::system_clock::now();
     int64_t currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
         now.time_since_epoch()).count();
@@ -39,9 +39,9 @@ CameraDetectionResult CameraDetectionReader::getDetectionResult() {
         CameraDetectionResult result;
         
         if (config_.protocol == "REST") {
-            result = fetchByRest();
+            result = FetchByRest();
         } else if (config_.protocol == "ONVIF") {
-            result = fetchByOnvif();
+            result = FetchByOnvif();
         }
         
         lastFetchTime_ = currentTime;
@@ -65,7 +65,7 @@ CameraDetectionResult CameraDetectionReader::getDetectionResult() {
     return emptyResult;
 }
 
-CameraDetectionResult CameraDetectionReader::fetchByRest() {
+CameraDetectionResult CameraDetectionReader::FetchByRest() {
     CameraDetectionResult result;
     
     std::string url = config_.endpoint;
@@ -82,9 +82,9 @@ CameraDetectionResult CameraDetectionReader::fetchByRest() {
     
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, 
-                     +[](void* contents, size_t size, size_t nmemb, std::string* s) {
-                         s->append((char*)contents, size * nmemb);
-                         return size * nmemb;
+                     +[](void* contents, size_t Size, size_t nmemb, std::string* s) {
+                         s->append((char*)contents, Size * nmemb);
+                         return Size * nmemb;
                      });
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseString);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, config_.timeoutMs);
@@ -157,7 +157,7 @@ CameraDetectionResult CameraDetectionReader::fetchByRest() {
     return result;
 }
 
-CameraDetectionResult CameraDetectionReader::fetchByOnvif() {
+CameraDetectionResult CameraDetectionReader::FetchByOnvif() {
     CameraDetectionResult result;
     
     LOG_DEBUG("Fetching detection result via ONVIF (stub)");
@@ -165,7 +165,7 @@ CameraDetectionResult CameraDetectionReader::fetchByOnvif() {
     return result;
 }
 
-bool CameraDetectionReader::matchFrame(int frameId, int64_t timestamp, 
+bool CameraDetectionReader::MatchFrame(int frameId, int64_t timestamp, 
                                          const CameraDetectionResult& result) {
     if (result.frameId == frameId || result.timeStamp == timestamp) {
         lastMatchedFrameId_ = frameId;

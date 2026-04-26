@@ -13,9 +13,9 @@ class IEventAnalyzer {
 public:
     virtual ~IEventAnalyzer() = default;
     
-    virtual void analyzeImage(const cv::Mat& frame, 
+    virtual void AnalyzeImage(const cv::Mat& frame, 
                               const std::vector<BoundingBox>& boxes) = 0;
-    virtual void analyzeVideo(const std::vector<cv::Mat>& frames, 
+    virtual void AnalyzeVideo(const std::vector<cv::Mat>& frames, 
                               const std::vector<BoundingBox>& boxes) = 0;
 };
 
@@ -28,15 +28,15 @@ public:
     EventAnalyzer(const EventAnalysisConfig& config);
     ~EventAnalyzer();
     
-    void analyzeImage(const cv::Mat& frame, 
+    void AnalyzeImage(const cv::Mat& frame, 
                       const std::vector<BoundingBox>& boxes) override;
-    void analyzeVideo(const std::vector<cv::Mat>& frames, 
+    void AnalyzeVideo(const std::vector<cv::Mat>& frames, 
                       const std::vector<BoundingBox>& boxes) override;
     
     void setEventCallback(EventCallback callback);
     void setVideoBuffer(std::deque<cv::Mat>* buffer);
     
-    int getEventCount() const { return eventCount_; }
+    int GetEventCount() const { return eventCount_; }
     
 private:
     void drawBoxes(cv::Mat& frame, const std::vector<BoundingBox>& boxes);
@@ -58,8 +58,8 @@ public:
     void addFrame(const cv::Mat& frame, int frameId, int64_t timestamp);
     std::vector<cv::Mat> getFrames(int count);
     std::vector<cv::Mat> getFramesByDuration(int durationSec, double fps);
-    void clear();
-    int size() const { return static_cast<int>(frames_.size()); }
+    void Clear();
+    int Size() const { return static_cast<int>(frames_.size()); }
     
 private:
     std::deque<cv::Mat> frames_;

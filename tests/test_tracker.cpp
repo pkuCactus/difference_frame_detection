@@ -13,7 +13,7 @@ TEST(ByteTrackerTest, Init) {
     cv::Mat frame(480, 640, CV_8UC3);
     std::vector<BoundingBox> boxes;
     
-    std::vector<Track> tracks = tracker.update(frame, boxes);
+    std::vector<Track> tracks = tracker.Update(frame, boxes);
     EXPECT_TRUE(tracks.empty());
 }
 
@@ -27,7 +27,7 @@ TEST(ByteTrackerTest, UpdateWithBoxes) {
     std::vector<BoundingBox> boxes;
     boxes.push_back(BoundingBox(100, 100, 200, 200, 0.9f, 0));
     
-    std::vector<Track> tracks = tracker.update(frame, boxes);
+    std::vector<Track> tracks = tracker.Update(frame, boxes);
     EXPECT_GE(tracks.size(), 1);
     EXPECT_GE(tracks[0].trackId, 0);
 }
@@ -43,7 +43,7 @@ TEST(ByteTrackerTest, MultiFrameTracking) {
     std::vector<BoundingBox> boxes;
     boxes.push_back(BoundingBox(100, 100, 200, 200, 0.9f, 0));
     
-    std::vector<Track> tracks = tracker.update(frame, boxes);
+    std::vector<Track> tracks = tracker.Update(frame, boxes);
     EXPECT_GE(tracks.size(), 1);
     
     int firstTrackId = tracks[0].trackId;
@@ -53,7 +53,7 @@ TEST(ByteTrackerTest, MultiFrameTracking) {
         std::vector<BoundingBox> frameBoxes;
         frameBoxes.push_back(similarBox);
         
-        tracks = tracker.update(frame, frameBoxes);
+        tracks = tracker.Update(frame, frameBoxes);
     }
     
     EXPECT_GE(tracks.size(), 1);
@@ -70,8 +70,8 @@ TEST(ByteTrackerTest, Predict) {
     std::vector<BoundingBox> boxes;
     boxes.push_back(BoundingBox(100, 100, 200, 200, 0.9f, 0));
     
-    tracker.update(frame, boxes);
-    std::vector<Track> predictions = tracker.predict();
+    tracker.Update(frame, boxes);
+    std::vector<Track> predictions = tracker.Predict();
     
     EXPECT_FALSE(predictions.empty());
 }
@@ -85,9 +85,9 @@ TEST(ByteTrackerTest, Reset) {
     std::vector<BoundingBox> boxes;
     boxes.push_back(BoundingBox(100, 100, 200, 200, 0.9f, 0));
     
-    tracker.update(frame, boxes);
+    tracker.Update(frame, boxes);
     tracker.reset();
     
-    std::vector<Track> tracks = tracker.update(frame, {});
+    std::vector<Track> tracks = tracker.Update(frame, {});
     EXPECT_TRUE(tracks.empty());
 }

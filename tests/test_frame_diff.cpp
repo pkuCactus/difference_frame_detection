@@ -10,7 +10,7 @@ TEST(FrameDiffAnalyzerTest, Init) {
     RefFrameConfig config;
     FrameDiffAnalyzer analyzer(config);
     
-    EXPECT_FALSE(analyzer.hasRef());
+    EXPECT_FALSE(analyzer.HasRef());
 }
 
 TEST(FrameDiffAnalyzerTest, UpdateRefWithNewestStrategy) {
@@ -23,10 +23,10 @@ TEST(FrameDiffAnalyzerTest, UpdateRefWithNewestStrategy) {
     std::vector<BoundingBox> boxes;
     boxes.push_back(BoundingBox(100, 100, 200, 200, 0.9f, 0));
     
-    analyzer.setBoxesForRoi(boxes);
-    analyzer.updateRef(frame);
+    analyzer.SetBoxesForRoi(boxes);
+    analyzer.UpdateRef(frame);
     
-    EXPECT_TRUE(analyzer.hasRef());
+    EXPECT_TRUE(analyzer.HasRef());
 }
 
 TEST(FrameDiffAnalyzerTest, UpdateRefWithDefaultStrategy) {
@@ -35,9 +35,9 @@ TEST(FrameDiffAnalyzerTest, UpdateRefWithDefaultStrategy) {
     FrameDiffAnalyzer analyzer(config);
     
     cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
-    analyzer.updateRef(frame);
+    analyzer.UpdateRef(frame);
     
-    EXPECT_TRUE(analyzer.hasRef());
+    EXPECT_TRUE(analyzer.HasRef());
 }
 
 TEST(FrameDiffAnalyzerTest, EmptyRef) {
@@ -46,7 +46,7 @@ TEST(FrameDiffAnalyzerTest, EmptyRef) {
     
     cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
     
-    EXPECT_FALSE(analyzer.isSimilar(frame, cv::Mat()));
+    EXPECT_FALSE(analyzer.IsSimilar(frame, cv::Mat()));
 }
 
 TEST(FrameDiffAnalyzerTest, SimilarFrames) {
@@ -60,9 +60,9 @@ TEST(FrameDiffAnalyzerTest, SimilarFrames) {
     cv::Mat frame1(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
     cv::Mat frame2(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
     
-    analyzer.updateRef(frame1);
+    analyzer.UpdateRef(frame1);
     
-    EXPECT_TRUE(analyzer.isSimilar(frame2, analyzer.getRef()));
+    EXPECT_TRUE(analyzer.IsSimilar(frame2, analyzer.GetRef()));
 }
 
 TEST(FrameDiffAnalyzerTest, DifferentFrames) {
@@ -76,9 +76,9 @@ TEST(FrameDiffAnalyzerTest, DifferentFrames) {
     cv::Mat frame1(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
     cv::Mat frame2(480, 640, CV_8UC3, cv::Scalar(0, 0, 0));
     
-    analyzer.updateRef(frame1);
+    analyzer.UpdateRef(frame1);
     
-    EXPECT_FALSE(analyzer.isSimilar(frame2, analyzer.getRef()));
+    EXPECT_FALSE(analyzer.IsSimilar(frame2, analyzer.GetRef()));
 }
 
 TEST(FrameDiffAnalyzerTest, Reset) {
@@ -87,9 +87,9 @@ TEST(FrameDiffAnalyzerTest, Reset) {
     FrameDiffAnalyzer analyzer(config);
     
     cv::Mat frame(480, 640, CV_8UC3);
-    analyzer.updateRef(frame);
+    analyzer.UpdateRef(frame);
     
     analyzer.reset();
     
-    EXPECT_FALSE(analyzer.hasRef());
+    EXPECT_FALSE(analyzer.HasRef());
 }

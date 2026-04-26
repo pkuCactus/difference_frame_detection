@@ -31,7 +31,7 @@ KalmanFilter::KalmanFilter() {
     }
 }
 
-void KalmanFilter::init(const BoundingBox& bbox) {
+void KalmanFilter::Init(const BoundingBox& bbox) {
     float cx = (bbox.x1 + bbox.x2) / 2.0f;
     float cy = (bbox.y1 + bbox.y2) / 2.0f;
     float w = bbox.x2 - bbox.x1;
@@ -49,7 +49,7 @@ void KalmanFilter::init(const BoundingBox& bbox) {
     covariance_ = cv::Mat::eye(state_.rows, covariance_.rows, CV_32F) * 10;
 }
 
-void KalmanFilter::predict() {
+void KalmanFilter::Predict() {
     state_ = transitionMatrix_ * state_;
     
     cv::Mat Q = transitionMatrix_ * covariance_ * transitionMatrix_.t() + processNoiseCov_;
@@ -61,7 +61,7 @@ void KalmanFilter::predict() {
     state_.at<float>(3) = std::max(1.0f, h);
 }
 
-void KalmanFilter::update(const BoundingBox& bbox) {
+void KalmanFilter::Update(const BoundingBox& bbox) {
     float cx = (bbox.x1 + bbox.x2) / 2.0f;
     float cy = (bbox.y1 + bbox.y2) / 2.0f;
     float w = bbox.x2 - bbox.x1;
@@ -107,20 +107,20 @@ TrackObject::TrackObject(const BoundingBox& bbox, int trackId, int frameId, int 
     , frameId_(frameId)
     , score_(bbox.conf)
     , confirmFrames_(confirmFrames) {
-    kalman_.init(bbox);
+    kalman_.Init(bbox);
     
     if (hitStreak_ >= confirmFrames_) {
         state_ = TrackState::Tracked;
     }
 }
 
-void TrackObject::predict() {
-    kalman_.predict();
+void TrackObject::Predict() {
+    kalman_.Predict();
     age_++;
 }
 
-void TrackObject::update(const BoundingBox& bbox, int frameId) {
-    kalman_.update(bbox);
+void TrackObject::Update(const BoundingBox& bbox, int frameId) {
+    kalman_.Update(bbox);
     frameId_ = frameId;
     score_ = bbox.conf;
     age_ = 0;
@@ -159,12 +159,12 @@ ByteTracker::ByteTracker(const TrackerConfig& config)
 ByteTracker::~ByteTracker() {
 }
 
-std::vector<Track> ByteTracker::update(const cv::Mat& frame,
+std::vector<Track> ByteTracker::Update(const cv::Mat& frame,
                                         const std::vector<BoundingBox>& boxes) {
     frameCount_++;
     
     for (auto& track : tracks_) {
-        track->predict();
+        track->Predict();
     }
     
     std::vector<BoundingBox> highDetBoxes;
@@ -210,7 +210,7 @@ std::vector<Track> ByteTracker::update(const cv::Mat& frame,
     for (size_t i = 0; i < matchedHighDet.size(); ++i) {
         int detIdx = matchedHighDet[i];
         int trackIdx = matchedTrackedTrack[i];
-        trackedTracks[trackIdx]->update(highDetBoxes[detIdx], frameCount_);
+        trackedTracks[trackIdx]->Update(highDetBoxes[detIdx], frameCount_);
     }
     
     std::vector<TrackObject*> unmatchedTrackObjects;
@@ -237,7 +237,7 @@ std::vector<Track> ByteTracker::update(const cv::Mat& frame,
     for (size_t i = 0; i < matchedLowDet.size(); ++i) {
         int detIdx = matchedLowDet[i];
         int trackIdx = matchedLostTrack[i];
-        unmatchedTrackObjects[trackIdx]->update(lowDetBoxes[detIdx], frameCount_);
+        unmatchedTrackObjects[trackIdx]->Update(lowDetBoxes[detIdx], frameCount_);
         unmatchedTrackObjects[trackIdx]->markLost();
     }
     
@@ -308,17 +308,17 @@ std::vector<Track> ByteTracker::update(const cv::Mat& frame,
     
     outputTracks_ = result;
     
-    LOG_INFO("ByteTracker update: " + std::to_string(boxes.size()) + " detections -> " +
+    LOG_INFO("ByteTracker Update: " + std::to_string(boxes.size()) + " detections -> " +
              std::to_string(result.size()) + " confirmed tracks");
     
     return result;
 }
 
-std::vector<Track> ByteTracker::predict() {
+std::vector<Track> ByteTracker::Predict() {
     std::vector<Track> predictions;
     
     for (auto& track : tracks_) {
-        track->predict();
+        track->Predict();
         
         if (track->getState() != TrackState::Removed) {
             Track t;
@@ -394,8 +394,8 @@ std::vector<std::vector<float>> ByteTracker::computeIoUMatrix(
             float y2 = std::min(boxesA[i].y2, boxesB[j].y2);
             
             float intersection = std::max(0.0f, x2 - x1) * std::max(0.0f, y2 - y1);
-            float areaA = boxesA[i].area();
-            float areaB = boxesB[j].area();
+            float areaA = boxesA[i].Area();
+            float areaB = boxesB[j].Area();
             float unionArea = areaA + areaB - intersection;
             
             float iou = unionArea > 0 ? intersection / unionArea : 0.0f;

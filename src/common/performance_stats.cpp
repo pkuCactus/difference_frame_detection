@@ -6,12 +6,12 @@ namespace diff_det {
 PerformanceStats::PerformanceStats() {
 }
 
-void PerformanceStats::startTimer(const std::string& name) {
+void PerformanceStats::StartTimer(const std::string& name) {
     std::lock_guard<std::mutex> lock(mutex_);
     startTimes_[name] = std::chrono::high_resolution_clock::now();
 }
 
-void PerformanceStats::endTimer(const std::string& name) {
+void PerformanceStats::EndTimer(const std::string& name) {
     std::lock_guard<std::mutex> lock(mutex_);
     
     auto it = startTimes_.find(name);
@@ -21,28 +21,28 @@ void PerformanceStats::endTimer(const std::string& name) {
     
     auto endTime = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - it->second);
-    double ms = duration.count();
+    double ms = static_cast<double>(duration.count());
     
     timeRecords_[name].push_back(ms);
     
-    if (timeRecords_[name].size() > MAX_RECORDS) {
+    if (timeRecords_[name].size() > static_cast<size_t>(MAX_RECORDS)) {
         timeRecords_[name].erase(timeRecords_[name].begin());
     }
     
     startTimes_.erase(it);
 }
 
-void PerformanceStats::incrementCounter(const std::string& name, int value) {
+void PerformanceStats::IncrementCounter(const std::string& name, int32_t value) {
     std::lock_guard<std::mutex> lock(mutex_);
     counters_[name] += value;
 }
 
-void PerformanceStats::setCounter(const std::string& name, int value) {
+void PerformanceStats::SetCounter(const std::string& name, int32_t value) {
     std::lock_guard<std::mutex> lock(mutex_);
     counters_[name] = value;
 }
 
-double PerformanceStats::getAverageTime(const std::string& name) {
+double PerformanceStats::GetAverageTime(const std::string& name) {
     std::lock_guard<std::mutex> lock(mutex_);
     
     auto it = timeRecords_.find(name);
@@ -55,10 +55,10 @@ double PerformanceStats::getAverageTime(const std::string& name) {
         sum += t;
     }
     
-    return sum / it->second.size();
+    return sum / static_cast<double>(it->second.size());
 }
 
-int PerformanceStats::getCounter(const std::string& name) {
+int32_t PerformanceStats::GetCounter(const std::string& name) {
     std::lock_guard<std::mutex> lock(mutex_);
     
     auto it = counters_.find(name);
@@ -69,7 +69,7 @@ int PerformanceStats::getCounter(const std::string& name) {
     return it->second;
 }
 
-std::string PerformanceStats::getSummary() {
+std::string PerformanceStats::GetSummary() {
     std::lock_guard<std::mutex> lock(mutex_);
     
     std::ostringstream oss;
@@ -80,19 +80,19 @@ std::string PerformanceStats::getSummary() {
         if (records.empty()) continue;
         
         double sum = 0.0;
-        double maxT = 0.0;
-        double minT = std::numeric_limits<double>::max();
+        double maxTime = 0.0;
+        double minTime = std::numeric_limits<double>::max();
         
         for (double t : records) {
             sum += t;
-            maxT = std::max(maxT, t);
-            minT = std::min(minT, t);
+            maxTime = std::max(maxTime, t);
+            minTime = std::min(minTime, t);
         }
         
-        double avg = sum / records.size();
+        double avg = sum / static_cast<double>(records.size());
         
         oss << "  " << name << ": avg=" << std::fixed << std::setprecision(2) << avg 
-            << "ms, min=" << minT << "ms, max=" << maxT << "ms, samples=" << records.size() << "\n";
+            << "ms, min=" << minTime << "ms, max=" << maxTime << "ms, samples=" << records.size() << "\n";
     }
     
     oss << "\nCounters:\n";
@@ -103,7 +103,7 @@ std::string PerformanceStats::getSummary() {
     return oss.str();
 }
 
-void PerformanceStats::reset() {
+void PerformanceStats::Reset() {
     std::lock_guard<std::mutex> lock(mutex_);
     
     startTimes_.clear();
@@ -113,11 +113,11 @@ void PerformanceStats::reset() {
 
 ScopedTimer::ScopedTimer(PerformanceStats& stats, const std::string& name)
     : stats_(stats), name_(name) {
-    stats_.startTimer(name_);
+    stats_.StartTimer(name_);
 }
 
 ScopedTimer::~ScopedTimer() {
-    stats_.endTimer(name_);
+    stats_.EndTimer(name_);
 }
 
 }

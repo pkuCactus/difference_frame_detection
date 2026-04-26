@@ -9,7 +9,7 @@ TEST(ConfigValidationTest, ValidConfig) {
     Config config;
     config.rtsp.url = "rtsp://192.168.1.100:554/stream";
     
-    auto errors = config.validate();
+    auto errors = config.Validate();
     EXPECT_TRUE(errors.empty());
 }
 
@@ -17,7 +17,7 @@ TEST(ConfigValidationTest, MissingRtspUrl) {
     Config config;
     config.rtsp.url = "";
     
-    auto errors = config.validate();
+    auto errors = config.Validate();
     EXPECT_FALSE(errors.empty());
     
     bool foundUrlError = false;
@@ -35,7 +35,7 @@ TEST(ConfigValidationTest, InvalidModelType) {
     config.rtsp.url = "rtsp://test";
     config.localDetection.modelType = "invalid_model";
     
-    auto errors = config.validate();
+    auto errors = config.Validate();
     EXPECT_FALSE(errors.empty());
     
     bool foundModelError = false;
@@ -52,7 +52,7 @@ TEST(ConfigValidationTest, InvalidThreshold) {
     config.rtsp.url = "rtsp://test";
     config.localDetection.confThreshold = 1.5f;
     
-    auto errors = config.validate();
+    auto errors = config.Validate();
     EXPECT_FALSE(errors.empty());
 }
 
@@ -61,7 +61,7 @@ TEST(ConfigValidationTest, InvalidCompareMethod) {
     config.rtsp.url = "rtsp://test";
     config.refFrame.compareMethod = "invalid";
     
-    auto errors = config.validate();
+    auto errors = config.Validate();
     EXPECT_FALSE(errors.empty());
 }
 
@@ -70,7 +70,7 @@ TEST(ConfigValidationTest, InvalidLogLevel) {
     config.rtsp.url = "rtsp://test";
     config.logging.level = "INVALID";
     
-    auto errors = config.validate();
+    auto errors = config.Validate();
     EXPECT_FALSE(errors.empty());
 }
 
@@ -78,7 +78,7 @@ TEST(ConfigSerializationTest, ToString) {
     Config config;
     config.rtsp.url = "rtsp://test";
     
-    std::string str = config.toString();
+    std::string str = config.ToString();
     EXPECT_TRUE(str.find("RtspConfig") != std::string::npos);
     EXPECT_TRUE(str.find("rtsp://test") != std::string::npos);
 }
@@ -89,7 +89,7 @@ TEST(ConfigSerializationTest, ToSummary) {
     config.cameraDetection.enabled = true;
     config.tracker.enabled = true;
     
-    std::string summary = config.toSummary();
+    std::string summary = config.ToSummary();
     EXPECT_TRUE(summary.find("rtsp://test") != std::string::npos);
     EXPECT_TRUE(summary.find("camera") != std::string::npos);
     EXPECT_TRUE(summary.find("Tracker: enabled") != std::string::npos);
@@ -100,7 +100,7 @@ TEST(ConfigSerializationTest, ToYaml) {
     config.rtsp.url = "rtsp://test";
     config.tracker.enabled = true;
     
-    YAML::Node node = config.toYaml();
+    YAML::Node node = config.ToYaml();
     EXPECT_EQ(node["rtsp"]["url"].as<std::string>(), "rtsp://test");
     EXPECT_EQ(node["tracker"]["enabled"].as<bool>(), true);
 }
@@ -110,13 +110,13 @@ TEST(ConfigSerializationTest, SaveToFile) {
     config.rtsp.url = "rtsp://test";
     
     std::string path = "/tmp/test_config.yaml";
-    config.saveToFile(path);
+    config.SaveToFile(path);
     
     std::ifstream file(path);
     EXPECT_TRUE(file.is_open());
     file.close();
     
-    Config loaded = Config::fromFile(path);
+    Config loaded = Config::FromFile(path);
     EXPECT_EQ(loaded.rtsp.url, "rtsp://test");
 }
 

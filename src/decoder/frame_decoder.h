@@ -9,8 +9,8 @@ class IFrameDecoder {
 public:
     virtual ~IFrameDecoder() = default;
     
-    virtual bool init(const std::string& rtspUrl) = 0;
-    virtual bool decodeNext(cv::Mat& frame, int& frameId, int64_t& timestamp) = 0;
+    virtual bool Init(const std::string& rtspUrl) = 0;
+    virtual bool DecodeNext(cv::Mat& frame, int& frameId, int64_t& timestamp) = 0;
     virtual void reset() = 0;
     virtual bool isOpened() = 0;
 };
@@ -20,14 +20,14 @@ public:
     FrameDecoder();
     ~FrameDecoder();
     
-    bool init(const std::string& rtspUrl) override;
-    bool decodeNext(cv::Mat& frame, int& frameId, int64_t& timestamp) override;
+    bool Init(const std::string& rtspUrl) override;
+    bool DecodeNext(cv::Mat& frame, int& frameId, int64_t& timestamp) override;
     void reset() override;
     bool isOpened() override;
     
-    double getFps() const;
-    int getWidth() const;
-    int getHeight() const;
+    double GetFps() const;
+    int GetWidth() const;
+    int GetHeight() const;
     
 private:
     cv::VideoCapture cap_;

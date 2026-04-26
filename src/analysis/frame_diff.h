@@ -12,10 +12,10 @@ class IFrameDiffAnalyzer {
 public:
     virtual ~IFrameDiffAnalyzer() = default;
     
-    virtual bool isSimilar(const cv::Mat& current, const cv::Mat& ref) = 0;
-    virtual void updateRef(const cv::Mat& frame) = 0;
-    virtual bool hasRef() = 0;
-    virtual cv::Mat getRef() = 0;
+    virtual bool IsSimilar(const cv::Mat& current, const cv::Mat& ref) = 0;
+    virtual void UpdateRef(const cv::Mat& frame) = 0;
+    virtual bool HasRef() = 0;
+    virtual cv::Mat GetRef() = 0;
     virtual void reset() = 0;
 };
 
@@ -23,19 +23,19 @@ class FrameDiffAnalyzer : public IFrameDiffAnalyzer {
 public:
     FrameDiffAnalyzer(const RefFrameConfig& config);
     
-    bool isSimilar(const cv::Mat& current, const cv::Mat& ref) override;
-    void updateRef(const cv::Mat& frame) override;
-    bool hasRef() override;
-    cv::Mat getRef() override;
+    bool IsSimilar(const cv::Mat& current, const cv::Mat& ref) override;
+    void UpdateRef(const cv::Mat& frame) override;
+    bool HasRef() override;
+    cv::Mat GetRef() override;
     void reset() override;
     
-    void setBoxesForRoi(const std::vector<BoundingBox>& boxes);
-    void setThreshold(float threshold);
+    void SetBoxesForRoi(const std::vector<BoundingBox>& boxes);
+    void SetThreshold(float threshold);
     
     int getRefUpdateCount() const { return refUpdateCount_; }
     
 private:
-    cv::Mat extractRoi(const cv::Mat& frame, const std::vector<BoundingBox>& boxes);
+    cv::Mat ExtractRoi(const cv::Mat& frame, const std::vector<BoundingBox>& boxes);
     
     float threshold_;
     std::string compareMethod_;

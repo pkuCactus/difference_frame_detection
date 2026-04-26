@@ -10,9 +10,9 @@ class IDetector {
 public:
     virtual ~IDetector() = default;
     
-    virtual std::vector<BoundingBox> detect(const cv::Mat& frame) = 0;
-    virtual bool init() = 0;
-    virtual void setConfThreshold(float threshold) = 0;
+    virtual std::vector<BoundingBox> Detect(const cv::Mat& frame) = 0;
+    virtual bool Init() = 0;
+    virtual void SetConfThreshold(float threshold) = 0;
 };
 
 }

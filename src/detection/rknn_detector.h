@@ -17,17 +17,17 @@ namespace diff_det {
 
 struct RknnInputInfo {
     int32_t index;
-    int32_t width;
-    int32_t height;
+    int32_t Width;
+    int32_t Height;
     int32_t channel;
     int32_t format;
     int32_t type;
-    int32_t size;
+    int32_t Size;
 };
 
 struct RknnOutputInfo {
     int32_t index;
-    int32_t size;
+    int32_t Size;
     int32_t want_float;
     int32_t fmt;
     int32_t type;
@@ -48,31 +48,31 @@ public:
     RknnDetector(const LocalDetectionConfig& config);
     ~RknnDetector();
     
-    std::vector<BoundingBox> detect(const cv::Mat& frame) override;
-    bool init() override;
-    void setConfThreshold(float threshold) override;
+    std::vector<BoundingBox> Detect(const cv::Mat& frame) override;
+    bool Init() override;
+    void SetConfThreshold(float threshold) override;
     
     void setPerformanceStats(PerformanceStats* stats);
     
-    double getLastDetectTime();
-    int32_t getTotalDetections();
-    int32_t getInputWidth() const { return inputWidth_; }
-    int32_t getInputHeight() const { return inputHeight_; }
-    bool isModelLoaded() const { return modelLoaded_; }
+    double GetLastDetectTime();
+    int32_t GetTotalDetections();
+    int32_t GetInputWidth() const { return inputWidth_; }
+    int32_t GetInputHeight() const { return inputHeight_; }
+    bool IsModelLoaded() const { return modelLoaded_; }
     
 private:
-    bool loadModel();
-    bool queryModelInfo();
-    bool prepareInputBuffers();
-    bool prepareOutputBuffers();
-    void releaseBuffers();
+    bool LoadModel();
+    bool QueryModelInfo();
+    bool PrepareInputBuffers();
+    bool PrepareOutputBuffers();
+    void ReleaseBuffers();
     
-    cv::Mat preprocess(const cv::Mat& frame, float& scaleX, float& scaleY,
+    cv::Mat Preprocess(const cv::Mat& frame, float& scaleX, float& scaleY,
                        int32_t& offsetX, int32_t& offsetY);
-    std::vector<float> runInference(const cv::Mat& preprocessed);
-    std::vector<float> parseOutputs();
+    std::vector<float> RunInference(const cv::Mat& preprocessed);
+    std::vector<float> ParseOutputs();
     
-    void fillInputBuffer(const cv::Mat& preprocessed);
+    void FillInputBuffer(const cv::Mat& preprocessed);
     
     LocalDetectionConfig config_;
     bool initialized_;

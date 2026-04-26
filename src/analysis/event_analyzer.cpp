@@ -20,15 +20,15 @@ EventAnalyzer::EventAnalyzer(const EventAnalysisConfig& config)
 EventAnalyzer::~EventAnalyzer() {
 }
 
-void EventAnalyzer::analyzeImage(const cv::Mat& frame,
+void EventAnalyzer::AnalyzeImage(const cv::Mat& frame,
                                    const std::vector<BoundingBox>& boxes) {
     if (frame.empty()) {
-        LOG_ERROR("Event analysis received empty frame");
+        LOG_ERROR("Event analysis received Empty frame");
         return;
     }
     
     if (boxes.empty()) {
-        LOG_WARN("Event analysis received empty boxes, skipping");
+        LOG_WARN("Event analysis received Empty boxes, skipping");
         return;
     }
     
@@ -49,15 +49,15 @@ void EventAnalyzer::analyzeImage(const cv::Mat& frame,
     }
 }
 
-void EventAnalyzer::analyzeVideo(const std::vector<cv::Mat>& frames,
+void EventAnalyzer::AnalyzeVideo(const std::vector<cv::Mat>& frames,
                                    const std::vector<BoundingBox>& boxes) {
     if (frames.empty()) {
-        LOG_ERROR("Event analysis received empty frames");
+        LOG_ERROR("Event analysis received Empty frames");
         return;
     }
     
     if (boxes.empty()) {
-        LOG_WARN("Event analysis received empty boxes, skipping");
+        LOG_WARN("Event analysis received Empty boxes, skipping");
         return;
     }
     
@@ -128,7 +128,7 @@ VideoBuffer::VideoBuffer(int maxSize)
 
 void VideoBuffer::addFrame(const cv::Mat& frame, int frameId, int64_t timestamp) {
     if (frame.empty()) {
-        LOG_WARN("VideoBuffer received empty frame");
+        LOG_WARN("VideoBuffer received Empty frame");
         return;
     }
     
@@ -169,7 +169,7 @@ std::vector<cv::Mat> VideoBuffer::getFramesByDuration(int durationSec, double fp
     return getFrames(frameCount);
 }
 
-void VideoBuffer::clear() {
+void VideoBuffer::Clear() {
     frames_.clear();
     frameIds_.clear();
     timestamps_.clear();

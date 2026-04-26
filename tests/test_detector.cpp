@@ -10,23 +10,23 @@ TEST(RknnDetectorTest, Init) {
     config.modelPath = "/tmp/test.rknn";
     
     RknnDetector detector(config);
-    EXPECT_TRUE(detector.init());
+    EXPECT_TRUE(detector.Init());
 }
 
 TEST(RknnDetectorTest, SetConfThreshold) {
     LocalDetectionConfig config;
     RknnDetector detector(config);
     
-    detector.setConfThreshold(0.7f);
+    detector.SetConfThreshold(0.7f);
 }
 
 TEST(RknnDetectorTest, Preprocess) {
     LocalDetectionConfig config;
     RknnDetector detector(config);
-    detector.init();
+    detector.Init();
     
     cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
-    std::vector<BoundingBox> boxes = detector.detect(frame);
+    std::vector<BoundingBox> boxes = detector.Detect(frame);
     
     EXPECT_TRUE(boxes.empty());
 }
@@ -34,10 +34,10 @@ TEST(RknnDetectorTest, Preprocess) {
 TEST(RknnDetectorTest, EmptyFrame) {
     LocalDetectionConfig config;
     RknnDetector detector(config);
-    detector.init();
+    detector.Init();
     
     cv::Mat emptyFrame;
-    std::vector<BoundingBox> boxes = detector.detect(emptyFrame);
+    std::vector<BoundingBox> boxes = detector.Detect(emptyFrame);
     
     EXPECT_TRUE(boxes.empty());
 }

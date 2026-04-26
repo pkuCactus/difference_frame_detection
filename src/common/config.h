@@ -12,56 +12,56 @@ struct ConfigValidationError {
     std::string message;
     std::string suggestion;
     
-    ConfigValidationError(const std::string& f, const std::string& m, const std::string& s = "")
-        : field(f), message(m), suggestion(s) {}
+    ConfigValidationError(const std::string& fieldVal, const std::string& msgVal, const std::string& suggestVal = "")
+        : field(fieldVal), message(msgVal), suggestion(suggestVal) {}
 };
 
 struct RtspConfig {
     std::string url;
-    int reconnectIntervalMs;
+    int32_t reconnectIntervalMs;
     
     RtspConfig() : reconnectIntervalMs(3000) {}
     
-    bool isValid() const;
-    std::string toString() const;
+    bool IsValid() const;
+    std::string ToString() const;
 };
 
 struct CameraDetectionConfig {
     bool enabled;
     std::string protocol;
     std::string endpoint;
-    int pollIntervalMs;
+    int32_t pollIntervalMs;
     std::string cameraId;
     std::string cameraHost;
-    int cameraPort;
+    int32_t cameraPort;
     std::string capabilityUrl;
-    int timeoutMs;
+    int32_t timeoutMs;
     
     CameraDetectionConfig() : enabled(true), protocol("REST"), pollIntervalMs(100), 
                                cameraPort(80), timeoutMs(3000) {}
     
-    bool isValid() const;
-    std::string toString() const;
+    bool IsValid() const;
+    std::string ToString() const;
 };
 
 struct LocalDetectionConfig {
     std::string modelPath;
     std::string modelType;
     float confThreshold;
-    int detectInterval;
-    int timeoutMs;
+    int32_t detectInterval;
+    int32_t timeoutMs;
     
     LocalDetectionConfig() : modelType("yolov8"), confThreshold(0.5f), 
                               detectInterval(3), timeoutMs(500) {}
     
-    bool isValid() const;
-    std::string toString() const;
+    bool IsValid() const;
+    std::string ToString() const;
 };
 
 struct TrackerConfig {
     bool enabled;
-    int confirmFrames;
-    int maxLostFrames;
+    int32_t confirmFrames;
+    int32_t maxLostFrames;
     float highThreshold;
     float lowThreshold;
     float matchThreshold;
@@ -69,8 +69,8 @@ struct TrackerConfig {
     TrackerConfig() : enabled(false), confirmFrames(3), maxLostFrames(30),
                        highThreshold(0.5f), lowThreshold(0.1f), matchThreshold(0.5f) {}
     
-    bool isValid() const;
-    std::string toString() const;
+    bool IsValid() const;
+    std::string ToString() const;
 };
 
 struct RefFrameConfig {
@@ -82,28 +82,28 @@ struct RefFrameConfig {
     RefFrameConfig() : similarityThreshold(0.85f), compareMethod("ssim"),
                         updateStrategy("newest"), compareRoiOnly(false) {}
     
-    bool isValid() const;
-    std::string toString() const;
+    bool IsValid() const;
+    std::string ToString() const;
 };
 
 struct EventAnalysisConfig {
     std::string mode;
-    int videoDurationSec;
+    int32_t videoDurationSec;
     
     EventAnalysisConfig() : mode("image"), videoDurationSec(5) {}
     
-    bool isValid() const;
-    std::string toString() const;
+    bool IsValid() const;
+    std::string ToString() const;
 };
 
 struct LoggingConfig {
     std::string level;
     std::string filePath;
     
-    LoggingConfig() : level("INFO"), filePath("/data/logs/pipeline.log") {}
+    LoggingConfig() : level("INFO"), filePath("/data/logs/pipeline.Log") {}
     
-    bool isValid() const;
-    std::string toString() const;
+    bool IsValid() const;
+    std::string ToString() const;
 };
 
 class Config {
@@ -116,22 +116,22 @@ public:
     EventAnalysisConfig eventAnalysis;
     LoggingConfig logging;
     
-    static Config fromFile(const std::string& path);
-    static Config fromYaml(const YAML::Node& node);
+    static Config FromFile(const std::string& path);
+    static Config FromYaml(const YAML::Node& node);
     
-    bool isValid() const;
-    std::vector<ConfigValidationError> validate() const;
+    bool IsValid() const;
+    std::vector<ConfigValidationError> Validate() const;
     
-    std::string toString() const;
-    std::string toSummary() const;
+    std::string ToString() const;
+    std::string ToSummary() const;
     
-    void saveToFile(const std::string& path) const;
-    YAML::Node toYaml() const;
+    void SaveToFile(const std::string& path) const;
+    YAML::Node ToYaml() const;
     
-    std::string getConfigPath() const { return configPath_; }
+    std::string GetConfigPath() const { return configPath_; }
     
     using ConfigChangeCallback = std::function<void(const Config&)>;
-    void setChangeCallback(ConfigChangeCallback callback);
+    void SetChangeCallback(ConfigChangeCallback callback);
     
 private:
     std::string configPath_;
