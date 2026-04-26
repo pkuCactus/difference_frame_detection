@@ -20,18 +20,38 @@ EventAnalyzer::EventAnalyzer(const EventAnalysisConfig& config)
 EventAnalyzer::~EventAnalyzer() {
 }
 
-void EventAnalyzer::AnalyzeImage(const cv::Mat& frame,
-                                   const std::vector<BoundingBox>& boxes) {
+bool EventAnalyzer::ValidateInput(const cv::Mat& frame,
+                                    const std::vector<BoundingBox>& boxes) {
     if (frame.empty()) {
         LOG_ERROR("Event analysis received empty frame");
-        return;
+        return false;
     }
-    
     if (boxes.empty()) {
         LOG_WARN("Event analysis received empty boxes, skipping");
+        return false;
+    }
+    return true;
+}
+
+bool EventAnalyzer::ValidateInput(const std::vector<cv::Mat>& frames,
+                                    const std::vector<BoundingBox>& boxes) {
+    if (frames.empty()) {
+        LOG_ERROR("Event analysis received empty frames");
+        return false;
+    }
+    if (boxes.empty()) {
+        LOG_WARN("Event analysis received empty boxes, skipping");
+        return false;
+    }
+    return true;
+}
+
+void EventAnalyzer::AnalyzeImage(const cv::Mat& frame,
+                                   const std::vector<BoundingBox>& boxes) {
+    if (!ValidateInput(frame, boxes)) {
         return;
     }
-    
+
     std::string eventId = generateEventId();
     eventCount_++;
     
@@ -51,16 +71,10 @@ void EventAnalyzer::AnalyzeImage(const cv::Mat& frame,
 
 void EventAnalyzer::AnalyzeVideo(const std::vector<cv::Mat>& frames,
                                    const std::vector<BoundingBox>& boxes) {
-    if (frames.empty()) {
-        LOG_ERROR("Event analysis received empty frames");
+    if (!ValidateInput(frames, boxes)) {
         return;
     }
-    
-    if (boxes.empty()) {
-        LOG_WARN("Event analysis received empty boxes, skipping");
-        return;
-    }
-    
+
     std::string eventId = generateEventId();
     eventCount_++;
     
