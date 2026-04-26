@@ -6,18 +6,45 @@
 
 namespace diff_det {
 
+namespace {
+
+EventAnalysisMode ParseMode(const std::string& mode) {
+    if (mode == "video") {
+        return EventAnalysisMode::kVideo;
+    }
+    return EventAnalysisMode::kImage;
+}
+
+const char* ModeToString(EventAnalysisMode mode) {
+    switch (mode) {
+        case EventAnalysisMode::kImage: return "image";
+        case EventAnalysisMode::kVideo: return "video";
+    }
+    return "image";
+}
+
+} // namespace
+
 EventAnalyzer::EventAnalyzer(const EventAnalysisConfig& config)
-    : mode_(config.mode)
+    : mode_(ParseMode(config.mode))
     , videoDurationSec_(config.videoDurationSec)
     , videoBuffer_(nullptr)
     , eventCount_(0)
     , lastEventId_(0) {
-    
-    LOG_INFO("EventAnalyzer initialized: mode=" + mode_ +
+
+    LOG_INFO("EventAnalyzer initialized: mode=" + std::string(ModeToString(mode_)) +
              ", videoDuration=" + std::to_string(videoDurationSec_) + "s");
 }
 
 EventAnalyzer::~EventAnalyzer() {
+}
+
+bool EventAnalyzer::ValidateBoxes(const std::vector<BoundingBox>& boxes) {
+    if (boxes.empty()) {
+        LOG_WARN("Event analysis received empty boxes, skipping");
+        return false;
+    }
+    return true;
 }
 
 bool EventAnalyzer::ValidateInput(const cv::Mat& frame,
@@ -26,11 +53,7 @@ bool EventAnalyzer::ValidateInput(const cv::Mat& frame,
         LOG_ERROR("Event analysis received empty frame");
         return false;
     }
-    if (boxes.empty()) {
-        LOG_WARN("Event analysis received empty boxes, skipping");
-        return false;
-    }
-    return true;
+    return ValidateBoxes(boxes);
 }
 
 bool EventAnalyzer::ValidateInput(const std::vector<cv::Mat>& frames,
@@ -39,11 +62,7 @@ bool EventAnalyzer::ValidateInput(const std::vector<cv::Mat>& frames,
         LOG_ERROR("Event analysis received empty frames");
         return false;
     }
-    if (boxes.empty()) {
-        LOG_WARN("Event analysis received empty boxes, skipping");
-        return false;
-    }
-    return true;
+    return ValidateBoxes(boxes);
 }
 
 void EventAnalyzer::AnalyzeImage(const cv::Mat& frame,
@@ -58,7 +77,7 @@ void EventAnalyzer::AnalyzeImage(const cv::Mat& frame,
     cv::Mat annotatedFrame = frame.clone();
     drawBoxes(annotatedFrame, boxes);
     
-    LOG_INFO("Event analysis (image mode): eventId=" + eventId +
+    LOG_INFO("Event analysis (image): eventId=" + eventId +
              ", boxes=" + std::to_string(boxes.size()) +
              ", totalEvents=" + std::to_string(eventCount_));
     
@@ -78,7 +97,7 @@ void EventAnalyzer::AnalyzeVideo(const std::vector<cv::Mat>& frames,
     std::string eventId = generateEventId();
     eventCount_++;
     
-    LOG_INFO("Event analysis (video mode): eventId=" + eventId +
+    LOG_INFO("Event analysis (video): eventId=" + eventId +
              ", frames=" + std::to_string(frames.size()) +
              ", boxes=" + std::to_string(boxes.size()) +
              ", totalEvents=" + std::to_string(eventCount_));
@@ -161,20 +180,18 @@ void VideoBuffer::addFrame(const cv::Mat& frame, int frameId, int64_t timestamp)
 }
 
 std::vector<cv::Mat> VideoBuffer::getFrames(int count) {
-    std::vector<cv::Mat> result;
-    
     int actualCount = std::min(count, static_cast<int>(frames_.size()));
-    
-    auto it = frames_.end();
-    for (int i = 0; i < actualCount; ++i) {
-        --it;
+
+    std::vector<cv::Mat> result;
+    result.reserve(actualCount);
+
+    auto it = frames_.begin() + (frames_.size() - actualCount);
+    for (; it != frames_.end(); ++it) {
         result.push_back(*it);
     }
-    
-    std::reverse(result.begin(), result.end());
-    
+
     LOG_DEBUG("VideoBuffer: retrieved " + std::to_string(result.size()) + " frames");
-    
+
     return result;
 }
 

@@ -1,40 +1,64 @@
 #include "analysis/frame_diff.h"
 #include "common/logger.h"
 #include <algorithm>
+#include <functional>
+#include <unordered_map>
 
 namespace diff_det {
 
+namespace {
+
+RefUpdateStrategy ParseUpdateStrategy(const std::string& strategy) {
+    static const std::unordered_map<std::string, RefUpdateStrategy> kStrategyMap = {
+        {"newest", RefUpdateStrategy::kNewest},
+        {"default", RefUpdateStrategy::kDefault},
+    };
+    auto it = kStrategyMap.find(strategy);
+    if (it != kStrategyMap.end()) {
+        return it->second;
+    }
+    LOG_WARN("Unknown update strategy: " + strategy + ", using default");
+    return RefUpdateStrategy::kDefault;
+}
+
+std::unique_ptr<ISimilarityCalculator> CreateCalculator(const std::string& method,
+                                                          std::string& outMethod) {
+    static const std::unordered_map<std::string, std::function<std::unique_ptr<ISimilarityCalculator>()>> kCalculatorFactory = {
+        {"ssim", []() { return std::make_unique<SsimCalculator>(); }},
+        {"pixel_diff", []() { return std::make_unique<PixelDiffCalculator>(); }},
+        {"phash", []() { return std::make_unique<HashCalculator>(); }},
+    };
+    auto it = kCalculatorFactory.find(method);
+    if (it != kCalculatorFactory.end()) {
+        outMethod = method;
+        return it->second();
+    }
+    LOG_WARN("Unknown compare method: " + method + ", using ssim");
+    outMethod = "ssim";
+    return std::make_unique<SsimCalculator>();
+}
+
+const char* StrategyToString(RefUpdateStrategy strategy) {
+    switch (strategy) {
+        case RefUpdateStrategy::kNewest: return "newest";
+        case RefUpdateStrategy::kDefault: return "default";
+    }
+    return "default";
+}
+
+} // namespace
+
 FrameDiffAnalyzer::FrameDiffAnalyzer(const RefFrameConfig& config)
     : threshold_(config.similarityThreshold)
-    , compareMethod_(config.compareMethod)
     , compareRoiOnly_(config.compareRoiOnly)
     , refUpdateCount_(0) {
 
-    if (config.updateStrategy == "newest") {
-        updateStrategy_ = RefUpdateStrategy::kNewest;
-    } else if (config.updateStrategy == "default") {
-        updateStrategy_ = RefUpdateStrategy::kDefault;
-    } else {
-        LOG_WARN("Unknown update strategy: " + config.updateStrategy + ", using default");
-        updateStrategy_ = RefUpdateStrategy::kDefault;
-    }
-    
-    if (compareMethod_ == "ssim") {
-        calculator_ = std::make_unique<SsimCalculator>();
-    } else if (compareMethod_ == "pixel_diff") {
-        calculator_ = std::make_unique<PixelDiffCalculator>();
-    } else if (compareMethod_ == "phash") {
-        calculator_ = std::make_unique<HashCalculator>();
-    } else {
-        LOG_WARN("Unknown compare method: " + compareMethod_ + ", using ssim");
-        compareMethod_ = "ssim";
-        calculator_ = std::make_unique<SsimCalculator>();
-    }
-    
-    std::string strategyStr = (updateStrategy_ == RefUpdateStrategy::kNewest) ? "newest" : "default";
+    updateStrategy_ = ParseUpdateStrategy(config.updateStrategy);
+    calculator_ = CreateCalculator(config.compareMethod, compareMethod_);
+
     LOG_INFO("FrameDiffAnalyzer initialized: method=" + compareMethod_ +
              ", threshold=" + std::to_string(threshold_) +
-             ", updateStrategy=" + strategyStr +
+             ", updateStrategy=" + StrategyToString(updateStrategy_) +
              ", compareRoiOnly=" + std::string(compareRoiOnly_ ? "true" : "false"));
 }
 
@@ -86,17 +110,13 @@ void FrameDiffAnalyzer::UpdateRef(const cv::Mat& frame) {
         return;
     }
     
-    if (updateStrategy_ == RefUpdateStrategy::kNewest) {
-        if (!currentBoxes_.empty()) {
-            refFrame_ = frame.clone();
-            refUpdateCount_++;
-            LOG_INFO("Ref frame updated (newest strategy), count=" + std::to_string(refUpdateCount_));
-        }
-    } else {
-        refFrame_ = frame.clone();
-        refUpdateCount_++;
-        LOG_INFO("Ref frame updated (default strategy), count=" + std::to_string(refUpdateCount_));
+    if (updateStrategy_ == RefUpdateStrategy::kNewest && currentBoxes_.empty()) {
+        return;
     }
+
+    refFrame_ = frame.clone();
+    refUpdateCount_++;
+    LOG_INFO("Ref frame updated (" + std::string(StrategyToString(updateStrategy_)) + " strategy), count=" + std::to_string(refUpdateCount_));
 }
 
 bool FrameDiffAnalyzer::HasRef() {

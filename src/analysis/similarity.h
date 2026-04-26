@@ -12,7 +12,7 @@ public:
     float Calculate(const cv::Mat& frame1, const cv::Mat& frame2);
     virtual std::string Name() = 0;
 
-protected:
+private:
     virtual float DoCalculate(const cv::Mat& frame1, const cv::Mat& frame2) = 0;
 };
 
@@ -22,10 +22,8 @@ public:
 
     std::string Name() override { return "ssim"; }
 
-protected:
-    float DoCalculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
-
 private:
+    float DoCalculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
     float calculateSsimChannel(const cv::Mat& img1, const cv::Mat& img2);
     cv::Mat createGaussianKernel(int size, float sigma);
 };
@@ -36,10 +34,8 @@ public:
 
     std::string Name() override { return "pixel_diff"; }
 
-protected:
-    float DoCalculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
-
 private:
+    float DoCalculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
     float calculatePixelDiffChannel(const cv::Mat& img1, const cv::Mat& img2);
 };
 
@@ -49,10 +45,8 @@ public:
 
     std::string Name() override { return "phash"; }
 
-protected:
-    float DoCalculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
-
 private:
+    float DoCalculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
     std::vector<uint8_t> computePHash(const cv::Mat& img);
     int hammingDistance(const std::vector<uint8_t>& hash1, const std::vector<uint8_t>& hash2);
 };

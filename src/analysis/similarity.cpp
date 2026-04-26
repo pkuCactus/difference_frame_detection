@@ -7,7 +7,7 @@ namespace diff_det {
 
 float ISimilarityCalculator::Calculate(const cv::Mat& frame1, const cv::Mat& frame2) {
     if (frame1.empty() || frame2.empty()) {
-        LOG_WARN(Name() + ": empty frame(s) received");
+        LOG_WARN("SimilarityCalculator: empty frame(s) received");
         return 0.0f;
     }
     return DoCalculate(frame1, frame2);

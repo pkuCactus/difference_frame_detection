@@ -4,27 +4,66 @@
 
 using namespace diff_det;
 
-TEST(EventAnalyzerTest, Constructor) {
-    EventAnalysisConfig config;
-    config.mode = "image";
-    config.videoDurationSec = 5;
+namespace {
 
+// Test helpers to eliminate copy-paste in tests
+class EventAnalyzerTestHelper {
+public:
+    static EventAnalysisConfig MakeImageConfig() {
+        EventAnalysisConfig config;
+        config.mode = "image";
+        config.videoDurationSec = 5;
+        return config;
+    }
+
+    static EventAnalysisConfig MakeVideoConfig() {
+        EventAnalysisConfig config;
+        config.mode = "video";
+        config.videoDurationSec = 5;
+        return config;
+    }
+
+    static cv::Mat MakeFrame(const cv::Scalar& color = cv::Scalar(128, 128, 128)) {
+        return cv::Mat(480, 640, CV_8UC3, color);
+    }
+
+    static std::vector<BoundingBox> MakeBoxes(size_t count = 1) {
+        std::vector<BoundingBox> boxes;
+        for (size_t i = 0; i < count; ++i) {
+            boxes.emplace_back(100.0f, 100.0f, 200.0f, 200.0f, 0.9f, 0);
+        }
+        return boxes;
+    }
+
+    static EventCallback MakeFlagCallback(bool& flag) {
+        return [&flag](const cv::Mat&, const std::vector<BoundingBox>&, int, int64_t) {
+            flag = true;
+        };
+    }
+
+    static EventCallback MakeCountCallback(int& count) {
+        return [&count](const cv::Mat&, const std::vector<BoundingBox>&, int, int64_t) {
+            ++count;
+        };
+    }
+};
+
+} // namespace
+
+TEST(EventAnalyzerTest, Constructor) {
+    auto config = EventAnalyzerTestHelper::MakeImageConfig();
     EventAnalyzer analyzer(config);
     EXPECT_EQ(analyzer.GetEventCount(), 0);
 }
 
 TEST(EventAnalyzerTest, AnalyzeImageEmptyFrame) {
-    EventAnalysisConfig config;
-    EventAnalyzer analyzer(config);
+    EventAnalyzer analyzer(EventAnalyzerTestHelper::MakeImageConfig());
 
     bool callbackCalled = false;
-    analyzer.setEventCallback([&callbackCalled](const cv::Mat&, const std::vector<BoundingBox>&, int, int64_t) {
-        callbackCalled = true;
-    });
+    analyzer.setEventCallback(EventAnalyzerTestHelper::MakeFlagCallback(callbackCalled));
 
     cv::Mat emptyFrame;
-    std::vector<BoundingBox> boxes;
-    boxes.emplace_back(100.0f, 100.0f, 200.0f, 200.0f, 0.9f, 0);
+    auto boxes = EventAnalyzerTestHelper::MakeBoxes();
 
     analyzer.AnalyzeImage(emptyFrame, boxes);
 
@@ -33,15 +72,12 @@ TEST(EventAnalyzerTest, AnalyzeImageEmptyFrame) {
 }
 
 TEST(EventAnalyzerTest, AnalyzeImageEmptyBoxes) {
-    EventAnalysisConfig config;
-    EventAnalyzer analyzer(config);
+    EventAnalyzer analyzer(EventAnalyzerTestHelper::MakeImageConfig());
 
     bool callbackCalled = false;
-    analyzer.setEventCallback([&callbackCalled](const cv::Mat&, const std::vector<BoundingBox>&, int, int64_t) {
-        callbackCalled = true;
-    });
+    analyzer.setEventCallback(EventAnalyzerTestHelper::MakeFlagCallback(callbackCalled));
 
-    cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
+    auto frame = EventAnalyzerTestHelper::MakeFrame();
     std::vector<BoundingBox> emptyBoxes;
 
     analyzer.AnalyzeImage(frame, emptyBoxes);
@@ -51,8 +87,7 @@ TEST(EventAnalyzerTest, AnalyzeImageEmptyBoxes) {
 }
 
 TEST(EventAnalyzerTest, AnalyzeImageValidInput) {
-    EventAnalysisConfig config;
-    EventAnalyzer analyzer(config);
+    EventAnalyzer analyzer(EventAnalyzerTestHelper::MakeImageConfig());
 
     bool callbackCalled = false;
     int receivedFrameId = 0;
@@ -61,9 +96,8 @@ TEST(EventAnalyzerTest, AnalyzeImageValidInput) {
         receivedFrameId = frameId;
     });
 
-    cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
-    std::vector<BoundingBox> boxes;
-    boxes.emplace_back(100.0f, 100.0f, 200.0f, 200.0f, 0.9f, 0);
+    auto frame = EventAnalyzerTestHelper::MakeFrame();
+    auto boxes = EventAnalyzerTestHelper::MakeBoxes();
 
     analyzer.AnalyzeImage(frame, boxes);
 
@@ -73,18 +107,13 @@ TEST(EventAnalyzerTest, AnalyzeImageValidInput) {
 }
 
 TEST(EventAnalyzerTest, AnalyzeVideoEmptyFrames) {
-    EventAnalysisConfig config;
-    config.mode = "video";
-    EventAnalyzer analyzer(config);
+    EventAnalyzer analyzer(EventAnalyzerTestHelper::MakeVideoConfig());
 
     bool callbackCalled = false;
-    analyzer.setEventCallback([&callbackCalled](const cv::Mat&, const std::vector<BoundingBox>&, int, int64_t) {
-        callbackCalled = true;
-    });
+    analyzer.setEventCallback(EventAnalyzerTestHelper::MakeFlagCallback(callbackCalled));
 
     std::vector<cv::Mat> emptyFrames;
-    std::vector<BoundingBox> boxes;
-    boxes.emplace_back(100.0f, 100.0f, 200.0f, 200.0f, 0.9f, 0);
+    auto boxes = EventAnalyzerTestHelper::MakeBoxes();
 
     analyzer.AnalyzeVideo(emptyFrames, boxes);
 
@@ -93,17 +122,13 @@ TEST(EventAnalyzerTest, AnalyzeVideoEmptyFrames) {
 }
 
 TEST(EventAnalyzerTest, AnalyzeVideoEmptyBoxes) {
-    EventAnalysisConfig config;
-    config.mode = "video";
-    EventAnalyzer analyzer(config);
+    EventAnalyzer analyzer(EventAnalyzerTestHelper::MakeVideoConfig());
 
     bool callbackCalled = false;
-    analyzer.setEventCallback([&callbackCalled](const cv::Mat&, const std::vector<BoundingBox>&, int, int64_t) {
-        callbackCalled = true;
-    });
+    analyzer.setEventCallback(EventAnalyzerTestHelper::MakeFlagCallback(callbackCalled));
 
     std::vector<cv::Mat> frames;
-    frames.push_back(cv::Mat(480, 640, CV_8UC3, cv::Scalar(128, 128, 128)));
+    frames.push_back(EventAnalyzerTestHelper::MakeFrame());
     std::vector<BoundingBox> emptyBoxes;
 
     analyzer.AnalyzeVideo(frames, emptyBoxes);
@@ -113,21 +138,16 @@ TEST(EventAnalyzerTest, AnalyzeVideoEmptyBoxes) {
 }
 
 TEST(EventAnalyzerTest, AnalyzeVideoValidInput) {
-    EventAnalysisConfig config;
-    config.mode = "video";
-    EventAnalyzer analyzer(config);
+    EventAnalyzer analyzer(EventAnalyzerTestHelper::MakeVideoConfig());
 
     int callbackCount = 0;
-    analyzer.setEventCallback([&callbackCount](const cv::Mat&, const std::vector<BoundingBox>&, int, int64_t) {
-        callbackCount++;
-    });
+    analyzer.setEventCallback(EventAnalyzerTestHelper::MakeCountCallback(callbackCount));
 
     std::vector<cv::Mat> frames;
-    frames.push_back(cv::Mat(480, 640, CV_8UC3, cv::Scalar(128, 128, 128)));
-    frames.push_back(cv::Mat(480, 640, CV_8UC3, cv::Scalar(64, 64, 64)));
+    frames.push_back(EventAnalyzerTestHelper::MakeFrame(cv::Scalar(128, 128, 128)));
+    frames.push_back(EventAnalyzerTestHelper::MakeFrame(cv::Scalar(64, 64, 64)));
 
-    std::vector<BoundingBox> boxes;
-    boxes.emplace_back(100.0f, 100.0f, 200.0f, 200.0f, 0.9f, 0);
+    auto boxes = EventAnalyzerTestHelper::MakeBoxes();
 
     analyzer.AnalyzeVideo(frames, boxes);
 
@@ -143,8 +163,7 @@ TEST(VideoBufferTest, Constructor) {
 TEST(VideoBufferTest, AddFrame) {
     VideoBuffer buffer(10);
 
-    cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
-    buffer.addFrame(frame, 1, 1000);
+    buffer.addFrame(EventAnalyzerTestHelper::MakeFrame(), 1, 1000);
 
     EXPECT_EQ(buffer.Size(), 1);
 }
@@ -161,7 +180,7 @@ TEST(VideoBufferTest, AddEmptyFrame) {
 TEST(VideoBufferTest, MaxSizeLimit) {
     VideoBuffer buffer(3);
 
-    cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
+    auto frame = EventAnalyzerTestHelper::MakeFrame();
     buffer.addFrame(frame, 1, 1000);
     buffer.addFrame(frame, 2, 2000);
     buffer.addFrame(frame, 3, 3000);
@@ -173,13 +192,9 @@ TEST(VideoBufferTest, MaxSizeLimit) {
 TEST(VideoBufferTest, GetFrames) {
     VideoBuffer buffer(10);
 
-    cv::Mat frame1(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
-    cv::Mat frame2(480, 640, CV_8UC3, cv::Scalar(64, 64, 64));
-    cv::Mat frame3(480, 640, CV_8UC3, cv::Scalar(32, 32, 32));
-
-    buffer.addFrame(frame1, 1, 1000);
-    buffer.addFrame(frame2, 2, 2000);
-    buffer.addFrame(frame3, 3, 3000);
+    buffer.addFrame(EventAnalyzerTestHelper::MakeFrame(cv::Scalar(128, 128, 128)), 1, 1000);
+    buffer.addFrame(EventAnalyzerTestHelper::MakeFrame(cv::Scalar(64, 64, 64)), 2, 2000);
+    buffer.addFrame(EventAnalyzerTestHelper::MakeFrame(cv::Scalar(32, 32, 32)), 3, 3000);
 
     auto frames = buffer.getFrames(2);
     EXPECT_EQ(frames.size(), 2);
@@ -188,8 +203,7 @@ TEST(VideoBufferTest, GetFrames) {
 TEST(VideoBufferTest, GetFramesMoreThanAvailable) {
     VideoBuffer buffer(10);
 
-    cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
-    buffer.addFrame(frame, 1, 1000);
+    buffer.addFrame(EventAnalyzerTestHelper::MakeFrame(), 1, 1000);
 
     auto frames = buffer.getFrames(5);
     EXPECT_EQ(frames.size(), 1);
@@ -198,7 +212,7 @@ TEST(VideoBufferTest, GetFramesMoreThanAvailable) {
 TEST(VideoBufferTest, GetFramesByDuration) {
     VideoBuffer buffer(30);
 
-    cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
+    auto frame = EventAnalyzerTestHelper::MakeFrame();
     for (int i = 0; i < 10; ++i) {
         buffer.addFrame(frame, i, i * 1000);
     }
@@ -210,7 +224,7 @@ TEST(VideoBufferTest, GetFramesByDuration) {
 TEST(VideoBufferTest, Clear) {
     VideoBuffer buffer(10);
 
-    cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
+    auto frame = EventAnalyzerTestHelper::MakeFrame();
     buffer.addFrame(frame, 1, 1000);
     buffer.addFrame(frame, 2, 2000);
 

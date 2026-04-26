@@ -9,6 +9,11 @@
 
 namespace diff_det {
 
+enum class EventAnalysisMode {
+    kImage,
+    kVideo
+};
+
 class IEventAnalyzer {
 public:
     virtual ~IEventAnalyzer() = default;
@@ -37,14 +42,15 @@ public:
     void setVideoBuffer(std::deque<cv::Mat>* buffer);
     
     int GetEventCount() const { return eventCount_; }
-    
+
 private:
+    bool ValidateBoxes(const std::vector<BoundingBox>& boxes);
     bool ValidateInput(const cv::Mat& frame, const std::vector<BoundingBox>& boxes);
     bool ValidateInput(const std::vector<cv::Mat>& frames, const std::vector<BoundingBox>& boxes);
     void drawBoxes(cv::Mat& frame, const std::vector<BoundingBox>& boxes);
     std::string generateEventId();
-    
-    std::string mode_;
+
+    EventAnalysisMode mode_;
     int videoDurationSec_;
     EventCallback callback_;
     std::deque<cv::Mat>* videoBuffer_;
