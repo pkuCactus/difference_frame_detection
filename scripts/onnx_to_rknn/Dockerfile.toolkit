@@ -1,0 +1,26 @@
+# Dockerfile for rknn-toolkit (旧版芯片: RK1808, RV1109, RV1126, RK3399Pro)
+FROM python:3.8-slim
+
+WORKDIR /app
+
+# 安装依赖
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装 rknn-toolkit
+RUN pip install --no-cache-dir \
+    flask \
+    onnx \
+    rknn-toolkit
+
+# 复制应用代码
+COPY . /app
+
+# 创建目录
+RUN mkdir -p /app/uploads /app/outputs /app/datasets
+
+EXPOSE 5000
+
+CMD ["python", "app.py"]

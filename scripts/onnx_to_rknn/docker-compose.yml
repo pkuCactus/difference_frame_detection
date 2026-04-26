@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # rknn-toolkit2 服务 (RK35xx系列)
+  rknn-toolkit2:
+    build:
+      context: .
+      dockerfile: Dockerfile.toolkit2
+    container_name: onnx-to-rknn-toolkit2
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      - ./datasets:/app/datasets
+    environment:
+      - SECRET_KEY=your-secret-key-here
+    restart: unless-stopped
+
+  # rknn-toolkit 服务 (旧版芯片)
+  rknn-toolkit:
+    build:
+      context: .
+      dockerfile: Dockerfile.toolkit
+    container_name: onnx-to-rknn-toolkit
+    ports:
+      - "5002:5000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      - ./datasets:/app/datasets
+    environment:
+      - SECRET_KEY=your-secret-key-here
+    restart: unless-stopped
+
+# 使用方法:
+# 1. 启动两个服务:
+#    docker-compose up -d
+#
+# 2. 访问:
+#    - RK35xx系列: http://localhost:5001
+#    - 旧版芯片:   http://localhost:5002
+#
+# 3. 单独构建:
+#    docker-compose build rknn-toolkit2
+#    docker-compose build rknn-toolkit

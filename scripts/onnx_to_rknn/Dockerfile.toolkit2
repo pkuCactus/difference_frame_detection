@@ -1,0 +1,29 @@
+# Dockerfile for rknn-toolkit2 (RK35xx系列: RK3562, RK3566, RK3568, RK3576, RK3588)
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# 安装依赖
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装 rknn-toolkit2
+RUN pip install --no-cache-dir \
+    flask \
+    onnx \
+    rknn-toolkit2
+
+# 复制应用代码
+COPY . /app
+
+# 创建目录
+RUN mkdir -p /app/uploads /app/outputs /app/datasets
+
+EXPOSE 5000
+
+CMD ["python", "app.py"]

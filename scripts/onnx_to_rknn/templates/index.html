@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONNX转RKNN</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 15px;
+        }
+        .container { max-width: 1100px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 15px; font-size: 1.8em; color: #00d2ff; }
+        .env-bar { text-align: center; margin-bottom: 15px; font-size: 13px; color: rgba(255,255,255,0.6); }
+        .env-bar span { margin: 0 15px; }
+        .env-bar .ok { color: #34c759; }
+        .env-bar .warn { color: #ffc107; }
+        .flow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+        }
+        .flow-item {
+            padding: 6px 12px;
+            background: rgba(0,210,255,0.15);
+            border-radius: 20px;
+            font-size: 13px;
+            color: #00d2ff;
+        }
+        .flow-arrow {
+            color: rgba(255,255,255,0.4);
+            font-size: 14px;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            margin-bottom: 15px;
+        }
+        .row { display: flex; gap: 20px; }
+        .col { flex: 1; }
+        .upload-box {
+            border: 2px dashed rgba(255,255,255,0.25);
+            border-radius: 10px;
+            padding: 25px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .upload-box:hover { border-color: #00d2ff; background: rgba(0,210,255,0.05); }
+        .upload-box.has-file { border-color: #34c759; background: rgba(52,199,89,0.05); }
+        .upload-box input[type="file"] { display: none; }
+        .upload-icon { font-size: 32px; margin-bottom: 8px; }
+        .upload-text { font-size: 14px; }
+        .upload-text small { color: rgba(255,255,255,0.5); }
+        .file-name { color: #34c759; font-size: 13px; margin-top: 8px; }
+        .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
+        .form-row > * { flex: 1; }
+        label { display: block; font-size: 13px; margin-bottom: 5px; color: rgba(255,255,255,0.8); }
+        select, input {
+            width: 100%;
+            padding: 8px 10px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 13px;
+        }
+        select option { background: #1a1a2e; color: #fff; }
+        input::placeholder { color: rgba(255,255,255,0.4); }
+        .hint { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 3px; }
+        .checkbox-item { display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 6px; }
+        .checkbox-item input { width: 16px; height: 16px; }
+        .collapsible { display: none; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px; margin-top: 8px; }
+        .collapsible.show { display: block; }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .platform-status { font-size: 12px; margin-top: 4px; }
+        .platform-status.ok { color: #34c759; }
+        .platform-status.warn { color: #ffc107; }
+        .loading {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .loading.show { display: flex; }
+        .loading-box { background: rgba(255,255,255,0.1); padding: 25px 40px; border-radius: 12px; text-align: center; }
+        .loading-icon { font-size: 32px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ONNX → RKNN 转换</h1>
+        <div class="env-bar">
+            {% if venv_status %}
+            {% for toolkit_type, status in venv_status.items() %}
+            <span class="{{ 'ok' if status.rknnInstalled else 'warn' }}">{{ toolkit_type }}: {{ '✓' if status.rknnInstalled else '○' }}</span>
+            {% endfor %}
+            {% else %}
+            <span>环境状态: 加载中...</span>
+            {% endif %}
+        </div>
+        
+        <div class="flow">
+            <div class="flow-item">1. 上传 ONNX</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-item">2. 选择平台</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-item">3. 配置参数</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-item">4. 自动转换</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-item">5. 下载 RKNN</div>
+        </div>
+        
+        <form action="/convert_direct" method="post" enctype="multipart/form-data" id="form">
+            <div class="card">
+                <div class="row">
+                    <div class="col" style="flex: 0.4;">
+                        <label>上传 ONNX 文件</label>
+                        <div class="upload-box" id="upload">
+                            <div class="upload-icon">📁</div>
+                            <div class="upload-text">点击上传 <small>(≤500MB)</small></div>
+                            <input type="file" name="file" id="file" accept=".onnx" required>
+                            <div class="file-name" id="fileName"></div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <label>目标平台 *</label>
+                        <select name="platform" id="platform" required>
+                            <option value="">选择芯片</option>
+                            <optgroup label="rknn-toolkit2">
+                                {% for name, info in platforms.items() %}
+                                {% if info.toolkit == 'rknn-toolkit2' %}
+                                <option value="{{ name }}">{{ name }}</option>
+                                {% endif %}
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="rknn-toolkit">
+                                {% for name, info in platforms.items() %}
+                                {% if info.toolkit == 'rknn-toolkit' %}
+                                <option value="{{ name }}">{{ name }}</option>
+                                {% endif %}
+                                {% endfor %}
+                            </optgroup>
+                        </select>
+                        <div class="platform-status" id="platformStatus"></div>
+                        
+                        <div class="form-row" style="margin-top: 12px;">
+                            <div>
+                                <label>输入高度</label>
+                                <input type="number" name="input_height" placeholder="448">
+                            </div>
+                            <div>
+                                <label>输入宽度</label>
+                                <input type="number" name="input_width" placeholder="832">
+                            </div>
+                            <div>
+                                <label>数据类型</label>
+                                <select name="input_dtype">
+                                    <option value="float32">float32</option>
+                                    <option value="float16">float16</option>
+                                    <option value="uint8">uint8</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>批次</label>
+                                <input type="number" name="batch_size" value="1" min="1">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="row">
+                    <div class="col">
+                        <label>预处理 (可选)</label>
+                        <div class="form-row">
+                            <div>
+                                <input type="text" name="mean_values" placeholder="均值: 0, 0, 0">
+                                <div class="hint">R,G,B 逗号分隔</div>
+                            </div>
+                            <div>
+                                <input type="text" name="std_values" placeholder="标准差: 1, 1, 1">
+                                <div class="hint">R,G,B 逗号分隔</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <label>量化 (可选)</label>
+                        <div class="checkbox-item">
+                            <input type="checkbox" name="do_quantization" id="quant" onchange="toggleQuant()">
+                            <label for="quant" style="margin: 0;">启用 INT8 量化</label>
+                        </div>
+                        <div class="collapsible" id="quantOpts">
+                            <input type="text" name="dataset_path" placeholder="数据集txt路径">
+                            <div class="form-row" style="margin-top: 8px;">
+                                <select name="quantized_dtype">
+                                    {% for dtype, desc in quantized_dtypes.items() %}
+                                    <option value="{{ dtype }}">{{ desc }}</option>
+                                    {% endfor %}
+                                </select>
+                                <select name="quantized_algorithm">
+                                    {% for algo, desc in quantized_algorithms.items() %}
+                                    <option value="{{ algo }}">{{ desc }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <label>优化 (可选)</label>
+                        <div class="form-row">
+                            <select name="optimization_level">
+                                {% for level, desc in optimization_levels.items() %}
+                                <option value="{{ level }}" {% if level == 2 %}selected{% endif %}>{{ desc }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="checkbox-item">
+                                <input type="checkbox" name="single_core_mode" id="single">
+                                <label for="single" style="margin: 0;">单核</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn" id="submitBtn" disabled>🚀 开始转换</button>
+        </form>
+    </div>
+    
+    <div class="loading" id="loading">
+        <div class="loading-box">
+            <div class="loading-icon">⏳</div>
+            <div>正在转换...</div>
+        </div>
+    </div>
+    
+    <script>
+        const venvStatus = {{ venv_status | tojson | safe if venv_status else '{}' }};
+        const upload = document.getElementById('upload');
+        const fileInput = document.getElementById('file');
+        const fileName = document.getElementById('fileName');
+        const platform = document.getElementById('platform');
+        const platformStatus = document.getElementById('platformStatus');
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+        const form = document.getElementById('form');
+        
+        upload.addEventListener('click', () => fileInput.click());
+        upload.addEventListener('dragover', e => { e.preventDefault(); upload.style.borderColor = '#00d2ff'; });
+        upload.addEventListener('dragleave', () => upload.style.borderColor = '');
+        upload.addEventListener('drop', e => { e.preventDefault(); upload.style.borderColor = ''; if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+        fileInput.addEventListener('change', () => { if(fileInput.files[0]) handleFile(fileInput.files[0]); });
+        
+        function handleFile(f) {
+            if(!f.name.toLowerCase().endsWith('.onnx')) { alert('请上传.onnx文件'); return; }
+            fileName.textContent = '✓ ' + f.name + ' (' + (f.size/1024/1024).toFixed(2) + ' MB)';
+            upload.classList.add('has-file');
+            checkSubmit();
+        }
+        
+        platform.addEventListener('change', () => {
+            const opt = platform.selectedOptions[0];
+            const toolkit = opt.parentElement.label;
+            if(toolkit && venvStatus[toolkit]) {
+                platformStatus.textContent = venvStatus[toolkit].rknnInstalled ? '✓ 环境就绪' : '○ 环境未就绪';
+                platformStatus.className = 'platform-status ' + (venvStatus[toolkit].rknnInstalled ? 'ok' : 'warn');
+            } else {
+                platformStatus.textContent = '';
+            }
+            checkSubmit();
+        });
+        
+        function checkSubmit() {
+            submitBtn.disabled = !(fileInput.files.length > 0 && platform.value);
+        }
+        
+        function toggleQuant() {
+            document.getElementById('quantOpts').classList.toggle('show', document.getElementById('quant').checked);
+        }
+        
+        form.addEventListener('submit', () => loading.classList.add('show'));
+        checkSubmit();
+    </script>
+</body>
+</html>
