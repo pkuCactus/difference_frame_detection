@@ -520,9 +520,7 @@ void StateMachine::InitializeComponents() {
     LOG_INFO("Initializing components...");
     
     rtspClient_ = std::make_unique<RtspClient>();
-    
-    decoder_ = std::make_unique<FrameDecoder>();
-    
+
     capabilityChecker_ = std::make_unique<CameraCapabilityChecker>();
     
     detectionReader_ = std::make_unique<CameraDetectionReader>();

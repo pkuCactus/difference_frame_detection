@@ -49,58 +49,42 @@ float SsimCalculator::DoCalculate(const cv::Mat& frame1, const cv::Mat& frame2) 
 float SsimCalculator::calculateSsimChannel(const cv::Mat& img1, const cv::Mat& img2) {
     const float C1 = 6.5025f;
     const float C2 = 58.5225f;
-    
+
     cv::Mat mu1, mu2;
     cv::GaussianBlur(img1, mu1, cv::Size(11, 11), 1.5);
     cv::GaussianBlur(img2, mu2, cv::Size(11, 11), 1.5);
-    
+
     cv::Mat mu1_sq = mu1.mul(mu1);
     cv::Mat mu2_sq = mu2.mul(mu2);
     cv::Mat mu1_mu2 = mu1.mul(mu2);
-    
+
     cv::Mat sigma1_sq, sigma2_sq, sigma12;
-    
+
     cv::Mat img1_sq = img1.mul(img1);
     cv::Mat img2_sq = img2.mul(img2);
     cv::Mat img1_img2 = img1.mul(img2);
-    
+
     cv::GaussianBlur(img1_sq, sigma1_sq, cv::Size(11, 11), 1.5);
     cv::GaussianBlur(img2_sq, sigma2_sq, cv::Size(11, 11), 1.5);
     cv::GaussianBlur(img1_img2, sigma12, cv::Size(11, 11), 1.5);
-    
+
     sigma1_sq = sigma1_sq - mu1_sq;
     sigma2_sq = sigma2_sq - mu2_sq;
     sigma12 = sigma12 - mu1_mu2;
-    
+
     cv::Mat numerator1 = 2.0f * mu1_mu2 + C1;
     cv::Mat numerator2 = 2.0f * sigma12 + C2;
     cv::Mat denominator1 = mu1_sq + mu2_sq + C1;
     cv::Mat denominator2 = sigma1_sq + sigma2_sq + C2;
-    
-    cv::Mat ssim_map;
-    cv::divide(numerator1.mul(numerator2), 
-               denominator1.mul(denominator2), 
-               ssim_map);
-    
-    cv::Scalar mean = cv::mean(ssim_map);
-    
-    return mean[0];
-}
 
-cv::Mat SsimCalculator::createGaussianKernel(int size, float sigma) {
-    cv::Mat kernel(size, size, CV_32F);
-    int half = size / 2;
-    
-    for (int y = -half; y <= half; ++y) {
-        for (int x = -half; x <= half; ++x) {
-            float value = std::exp(-(x*x + y*y) / (2.0f * sigma * sigma));
-            kernel.at<float>(y + half, x + half) = value;
-        }
-    }
-    
-    kernel /= cv::sum(kernel)[0];
-    
-    return kernel;
+    cv::Mat ssim_map;
+    cv::divide(numerator1.mul(numerator2),
+               denominator1.mul(denominator2),
+               ssim_map);
+
+    cv::Scalar mean = cv::mean(ssim_map);
+
+    return mean[0];
 }
 
 PixelDiffCalculator::PixelDiffCalculator() {

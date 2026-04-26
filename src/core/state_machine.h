@@ -8,7 +8,6 @@
 #include "detection/rknn_detector.h"
 #include "tracking/byte_tracker.h"
 #include "rtsp/rtsp_client.h"
-#include "decoder/frame_decoder.h"
 #include "camera/capability_checker.h"
 #include "camera/detection_reader.h"
 #include "analysis/frame_diff.h"
@@ -109,7 +108,6 @@ private:
     bool useCameraDetection_;
     
     std::unique_ptr<RtspClient> rtspClient_;
-    std::unique_ptr<FrameDecoder> decoder_;
     std::unique_ptr<CameraCapabilityChecker> capabilityChecker_;
     std::unique_ptr<CameraDetectionReader> detectionReader_;
     std::unique_ptr<RknnDetector> detector_;

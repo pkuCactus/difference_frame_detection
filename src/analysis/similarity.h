@@ -25,7 +25,6 @@ public:
 private:
     float DoCalculate(const cv::Mat& frame1, const cv::Mat& frame2) override;
     float calculateSsimChannel(const cv::Mat& img1, const cv::Mat& img2);
-    cv::Mat createGaussianKernel(int size, float sigma);
 };
 
 class PixelDiffCalculator : public ISimilarityCalculator {
