@@ -6,24 +6,11 @@ include(FetchDeps)
 option(RK3566_PLATFORM "Build for RK3566 platform with RKNN SDK (local build on device)" OFF)
 option(ANDROID_BUILD "Build for Android platform using NDK (cross-compile)" OFF)
 
-# Android 交叉编译时加载 NDK
-if(ANDROID_BUILD)
-    if(NOT CMAKE_TOOLCHAIN_FILE)
-        include(DownloadNDK)
-    endif()
-    message(STATUS "Building for Android platform (cross-compile)")
-endif()
-
-# RK3566 本地编译（在设备上执行，非交叉编译）
+# RK3566 平台使用交叉编译，依赖 Android NDK
 if(RK3566_PLATFORM)
-    if(CMAKE_TOOLCHAIN_FILE)
-        message(WARNING "RK3566_PLATFORM should be used for LOCAL build on the device, not cross-compile. "
-                        "If you want Android cross-compile, use ANDROID_BUILD=ON instead. "
-                        "To force local build, set -DCMAKE_TOOLCHAIN_FILE=\"\"")
-    endif()
-    message(STATUS "Building for RK3566 platform with RKNN SDK (local build)")
-else()
-    message(STATUS "Building with stub mode (non-RK3566 platform)")
+    include(DownloadNDK)
+    set(CMAKE_TOOLCHAIN_FILE "${ANDROID_NDK_DIR}/build/cmake/android.toolchain.cmake" CACHE FILEPATH "" FORCE)
+    message(STATUS "Configured for RK3566 platform with NDK: ${ANDROID_NDK_DIR}")
 endif()
 
 project(difference_detection VERSION 1.0.0 LANGUAGES CXX)
@@ -54,7 +41,7 @@ add_subdirectory(third-party/yaml-cpp)
 include(BuildOpenCV)
 
 # CURL：本地编译用系统库，交叉编译时自己编译
-if(CMAKE_TOOLCHAIN_FILE)
+if(RK3566_PLATFORM)
     # 交叉编译：需要自己编译 curl
     include(BuildCURL)
     set(CURL_EXTERNAL_DEPS curl_external)
@@ -122,19 +109,13 @@ if(RK3566_PLATFORM)
     set(RKNN_SDK_PATH "${CMAKE_SOURCE_DIR}/third-party/rknn-sdk" CACHE PATH "Path to RKNN SDK")
 
     find_path(RKNN_INCLUDE_DIR rknn_api.h
-        HINTS "${RKNN_SDK_PATH}/rknpu2/runtime/Linux/librknn_api/include"
-              "${RKNN_SDK_PATH}/rknn_runtime/include"
-              "${RKNN_SDK_PATH}/runtime/include"
-              "${RKNN_SDK_PATH}/include"
+        HINTS "${RKNN_SDK_PATH}/rknpu2/runtime/Android/librknn_api/include"
+        NO_CMAKE_FIND_ROOT_PATH
     )
 
     find_library(RKNN_LIBRARY rknnrt
-        HINTS "${RKNN_SDK_PATH}/rknpu2/runtime/Linux/librknn_api/aarch64"
-              "${RKNN_SDK_PATH}/rknpu2/runtime/Linux/librknn_api/armhf"
-              "${RKNN_SDK_PATH}/rknn_runtime/lib/linux/arm64"
-              "${RKNN_SDK_PATH}/runtime/lib/linux/arm64"
-              "${RKNN_SDK_PATH}/lib"
-              /usr/lib /lib
+        HINTS "${RKNN_SDK_PATH}/rknpu2/runtime/Android/librknn_api/${ANDROID_ABI}"
+        NO_CMAKE_FIND_ROOT_PATH
     )
 
     if(RKNN_INCLUDE_DIR)
