@@ -79,5 +79,18 @@ endif()
 
 if(BUILD_TESTS)
     enable_testing()
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/third-party/googletest/CMakeLists.txt")
+        message(STATUS "googletest submodule not present, attempting to initialize...")
+        execute_process(
+            COMMAND git submodule update --init -- third-party/googletest
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            RESULT_VARIABLE result
+        )
+    endif()
+    if(EXISTS "${CMAKE_SOURCE_DIR}/third-party/googletest/CMakeLists.txt")
+        add_subdirectory(third-party/googletest)
+    else()
+        find_package(GTest REQUIRED)
+    endif()
     add_subdirectory(tests)
 endif()
