@@ -345,12 +345,18 @@ class VirtualEnvManager:
         # 使用 uv 安装（实时输出进度，使用清华镜像）
         try:
             print(f"  -> 使用 uv 安装 {py_version}（清华镜像）...")
+            # 设置环境变量：禁用 uv 进度条，改为普通文本输出便于实时显示
+            env = os.environ.copy()
+            env["UV_NO_PROGRESS"] = "1"
+            env["NO_COLOR"] = "1"
+            
             process = subprocess.Popen(
                 [uv_path, "python", "install", py_version, "--mirror", TSINGHUA_PYTHON_MIRROR],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
+                env=env,
             )
 
             if process.stdout:
@@ -471,7 +477,10 @@ class VirtualEnvManager:
             try:
                 cmd = [uv_path, "venv", str(venv_path), "--python", py_cmd_name]
                 print(f"  -> 执行: {' '.join(cmd)}")
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                env = os.environ.copy()
+                env["UV_NO_PROGRESS"] = "1"
+                env["NO_COLOR"] = "1"
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
                 print(f"  -> uv venv 返回码: {result.returncode}")
                 if result.stdout:
                     print(f"  -> stdout: {result.stdout.strip()[:200]}")
@@ -621,21 +630,17 @@ class VirtualEnvManager:
                 return False, "下载失败"
 
             print(f"安装本地 whl: {downloaded_whl.name}")
-            print(" ".join(install_cmd) + f" {str(downloaded_whl)}")
+            cmd_display = " ".join(install_cmd) + f" {str(downloaded_whl)}"
+            print(cmd_display)
+            
+            cmd = install_cmd + [str(downloaded_whl)]
             
             process = subprocess.Popen(
-                install_cmd + [str(downloaded_whl)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                cmd,
+                stdout=None,  # 直接输出到终端，保留 uv 原生进度条
+                stderr=None,
                 text=True,
-                bufsize=1,
             )
-
-            if process.stdout:
-                for line in process.stdout:
-                    line = line.rstrip("\n")
-                    if line:
-                        print(f"  {line}")
 
             try:
                 returncode = process.wait(timeout=3600)
