@@ -649,7 +649,29 @@ class VirtualEnvManager:
                 return False, "安装超时"
 
             if returncode == 0:
-                print(f"✓ 安装成功")
+                print(f"✓ RKNN whl 安装成功")
+                
+                # 安装 setuptools（pkg_resources 是 setuptools 的一部分）
+                print(f"  -> 安装 setuptools...")
+                setuptools_cmd = install_cmd[:-1] + ["setuptools", install_cmd[-1]]
+                setuptools_process = subprocess.Popen(
+                    setuptools_cmd,
+                    stdout=None,
+                    stderr=None,
+                    text=True,
+                )
+                try:
+                    setuptools_ret = setuptools_process.wait(timeout=120)
+                except subprocess.TimeoutExpired:
+                    setuptools_process.kill()
+                    setuptools_process.wait()
+                    setuptools_ret = -1
+                
+                if setuptools_ret == 0:
+                    print(f"  ✓ setuptools 安装成功")
+                else:
+                    print(f"  ⚠ setuptools 安装失败，可能影响 RKNN 运行")
+                
                 self._check_all_envs()
                 return True, "安装成功"
             else:
