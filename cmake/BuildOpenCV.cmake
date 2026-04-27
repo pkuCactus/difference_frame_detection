@@ -30,6 +30,7 @@ set(OPENCV_BUILD_OPTIONS
     -DWITH_OPENJPEG=OFF
     -DWITH_JASPER=OFF
     -DWITH_ITT=OFF
+    -DWITH_ANDROID_MEDIANDK=OFF
     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
     -DCMAKE_INSTALL_PREFIX=${OPENCV_INSTALL_DIR}
 )
@@ -59,14 +60,33 @@ ExternalProject_Add(opencv_external
     INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
 )
 
-set(OpenCV_DIR ${OPENCV_INSTALL_DIR}/lib/cmake/opencv4 CACHE PATH "" FORCE)
-set(OpenCV_INCLUDE_DIRS ${OPENCV_INSTALL_DIR}/include/opencv4)
-
-set(OpenCV_LIBS
-    ${OPENCV_INSTALL_DIR}/lib/libopencv_highgui.a
-    ${OPENCV_INSTALL_DIR}/lib/libopencv_imgcodecs.a
-    ${OPENCV_INSTALL_DIR}/lib/libopencv_videoio.a
-    ${OPENCV_INSTALL_DIR}/lib/libopencv_video.a
-    ${OPENCV_INSTALL_DIR}/lib/libopencv_imgproc.a
-    ${OPENCV_INSTALL_DIR}/lib/libopencv_core.a
-)
+# Android 交叉编译时 OpenCV 安装结构不同
+if(CMAKE_TOOLCHAIN_FILE AND ANDROID_ABI)
+    # Android SDK 结构：sdk/native/jni/include 和 sdk/native/staticlibs/arm64-v8a
+    set(OpenCV_DIR ${OPENCV_INSTALL_DIR}/sdk/native/jni CACHE PATH "" FORCE)
+    set(OpenCV_INCLUDE_DIRS ${OPENCV_INSTALL_DIR}/sdk/native/jni/include)
+    
+    set(OpenCV_LIBS
+        ${OPENCV_INSTALL_DIR}/sdk/native/staticlibs/${ANDROID_ABI}/libopencv_highgui.a
+        ${OPENCV_INSTALL_DIR}/sdk/native/staticlibs/${ANDROID_ABI}/libopencv_imgcodecs.a
+        ${OPENCV_INSTALL_DIR}/sdk/native/staticlibs/${ANDROID_ABI}/libopencv_videoio.a
+        ${OPENCV_INSTALL_DIR}/sdk/native/staticlibs/${ANDROID_ABI}/libopencv_video.a
+        ${OPENCV_INSTALL_DIR}/sdk/native/staticlibs/${ANDROID_ABI}/libopencv_imgproc.a
+        ${OPENCV_INSTALL_DIR}/sdk/native/staticlibs/${ANDROID_ABI}/libopencv_core.a
+        ${OPENCV_INSTALL_DIR}/sdk/native/3rdparty/libs/${ANDROID_ABI}/libcpufeatures.a
+        ${OPENCV_INSTALL_DIR}/sdk/native/3rdparty/libs/${ANDROID_ABI}/libtegra_hal.a
+    )
+else()
+    # 标准 Linux 安装结构
+    set(OpenCV_DIR ${OPENCV_INSTALL_DIR}/lib/cmake/opencv4 CACHE PATH "" FORCE)
+    set(OpenCV_INCLUDE_DIRS ${OPENCV_INSTALL_DIR}/include/opencv4)
+    
+    set(OpenCV_LIBS
+        ${OPENCV_INSTALL_DIR}/lib/libopencv_highgui.a
+        ${OPENCV_INSTALL_DIR}/lib/libopencv_imgcodecs.a
+        ${OPENCV_INSTALL_DIR}/lib/libopencv_videoio.a
+        ${OPENCV_INSTALL_DIR}/lib/libopencv_video.a
+        ${OPENCV_INSTALL_DIR}/lib/libopencv_imgproc.a
+        ${OPENCV_INSTALL_DIR}/lib/libopencv_core.a
+    )
+endif()

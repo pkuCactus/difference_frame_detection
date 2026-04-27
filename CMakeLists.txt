@@ -38,6 +38,9 @@ EnsureSubmodule(third-party/yaml-cpp)
 # 引入 yaml-cpp
 add_subdirectory(third-party/yaml-cpp)
 
+# nlohmann/json（header-only 库）
+include(BuildJson)
+
 include(BuildOpenCV)
 
 # CURL：本地编译用系统库，交叉编译时自己编译
@@ -81,12 +84,28 @@ target_include_directories(difference_detection PRIVATE
     ${CURL_INCLUDE_DIRS}
 )
 
+set(THREAD_LIB "")
+if(NOT CMAKE_TOOLCHAIN_FILE)
+    set(THREAD_LIB pthread)
+endif()
+
+set(ANDROID_SYS_LIBS "")
+if(ANDROID)
+    set(ANDROID_SYS_LIBS log)
+endif()
+
+if(ANDROID)
+    target_link_options(difference_detection PRIVATE -Wl,--allow-shlib-undefined)
+endif()
+
 target_link_libraries(difference_detection PRIVATE
     ${OpenCV_LIBS}
     ${CURL_LIBRARIES}
     yaml-cpp
+    nlohmann_json::nlohmann_json
     z
-    pthread
+    ${THREAD_LIB}
+    ${ANDROID_SYS_LIBS}
 )
 
 if(RK3566_PLATFORM)

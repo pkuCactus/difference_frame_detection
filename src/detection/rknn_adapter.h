@@ -16,6 +16,8 @@ namespace diff_det {
 
 #define RKNN_SDK_VERSION "Stub-Mode"
 
+typedef uint64_t rknn_context;
+
 enum rknn_tensor_format {
     RKNN_TENSOR_FORMAT_AUTO = 0,
     RKNN_TENSOR_FORMAT_NCHW = 1,
@@ -96,7 +98,7 @@ public:
 private:
     bool LoadModelFile(const std::string& modelPath, std::vector<uint8_t>& modelData);
     
-    void* rknnCtx_;
+    rknn_context rknnCtx_;
     bool initialized_;
     
     int32_t inputWidth_;

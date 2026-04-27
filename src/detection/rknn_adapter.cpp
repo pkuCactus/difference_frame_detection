@@ -7,7 +7,7 @@
 namespace diff_det {
 
 RknnAdapter::RknnAdapter()
-    : rknnCtx_(nullptr)
+    : rknnCtx_(0)
     , initialized_(false)
     , inputWidth_(832)
     , inputHeight_(448)
@@ -135,7 +135,7 @@ bool RknnAdapter::QueryInputOutputInfo() {
         LOG_INFO("Input " + std::to_string(i) + ": format=" + 
                  std::to_string(inputAttrs_[i].fmt) +
                  ", type=" + std::to_string(inputAttrs_[i].type) +
-                 ", Size=" + std::to_string(inputAttrs_[i].Size) +
+                 ", size=" + std::to_string(inputAttrs_[i].size) +
                  ", dims=[" + std::to_string(inputAttrs_[i].dims[0]) + "," +
                  std::to_string(inputAttrs_[i].dims[1]) + "," +
                  std::to_string(inputAttrs_[i].dims[2]) + "," +
@@ -143,7 +143,7 @@ bool RknnAdapter::QueryInputOutputInfo() {
     }
     
     for (int32_t i = 0; i < outputNum_; ++i) {
-        LOG_INFO("Output " + std::to_string(i) + ": Size=" + std::to_string(outputAttrs_[i].Size) +
+        LOG_INFO("Output " + std::to_string(i) + ": size=" + std::to_string(outputAttrs_[i].size) +
                  ", n_elems=" + std::to_string(outputAttrs_[i].n_elems) +
                  ", dims=[" + std::to_string(outputAttrs_[i].dims[0]) + "," +
                  std::to_string(outputAttrs_[i].dims[1]) + "," +
@@ -174,16 +174,17 @@ bool RknnAdapter::SetInputBuffer(const uint8_t* data, int32_t Size) {
     inputs_.resize(inputNum_);
     for (int32_t i = 0; i < inputNum_; ++i) {
         inputs_[i].index = i;
-        inputs_[i].buf = static_cast<int32_t>(reinterpret_cast<uint64_t>(inputData_.data()));
+        inputs_[i].buf = inputData_.data();
+        inputs_[i].size = inputData_.size();
         inputs_[i].pass_through = 0;
-        inputs_[i].fmt = RKNN_TENSOR_FORMAT_NCHW;
-        
-        if (inputAttrs_[i].type == RKNN_TENSOR_TYPE_UINT8) {
-            inputs_[i].type = RKNN_TENSOR_TYPE_UINT8;
-        } else if (inputAttrs_[i].type == RKNN_TENSOR_TYPE_INT8) {
-            inputs_[i].type = RKNN_TENSOR_TYPE_INT8;
+        inputs_[i].fmt = RKNN_TENSOR_NCHW;
+
+        if (inputAttrs_[i].type == RKNN_TENSOR_UINT8) {
+            inputs_[i].type = RKNN_TENSOR_UINT8;
+        } else if (inputAttrs_[i].type == RKNN_TENSOR_INT8) {
+            inputs_[i].type = RKNN_TENSOR_INT8;
         } else {
-            inputs_[i].type = RKNN_TENSOR_TYPE_UINT8;
+            inputs_[i].type = RKNN_TENSOR_UINT8;
         }
     }
     
@@ -216,20 +217,20 @@ bool RknnAdapter::Run() {
     
     outputs_.resize(outputNum_);
     for (int32_t i = 0; i < outputNum_; ++i) {
-        outputs_[i].index = i;
         outputs_[i].want_float = 1;
-        outputs_[i].buf = static_cast<int32_t>(reinterpret_cast<uint64_t>(outputData_.data()));
-        outputs_[i].fmt = RKNN_TENSOR_FORMAT_NCHW;
-        outputs_[i].type = RKNN_TENSOR_TYPE_FLOAT32;
+        outputs_[i].is_prealloc = 1;
+        outputs_[i].index = i;
+        outputs_[i].buf = outputData_.data();
+        outputs_[i].size = outputData_.size() * sizeof(float);
     }
-    
+
     int32_t ret = rknn_run(rknnCtx_, nullptr);
     if (ret < 0) {
         LOG_ERROR("rknn_run failed: ret=" + std::to_string(ret));
         return false;
     }
-    
-    ret = rknn_outputs_get(rknnCtx_, outputNum_, outputs_.data(), sizeof(rknn_output));
+
+    ret = rknn_outputs_get(rknnCtx_, outputNum_, outputs_.data(), nullptr);
     if (ret < 0) {
         LOG_ERROR("rknn_outputs_get failed: ret=" + std::to_string(ret));
         return false;
@@ -297,7 +298,7 @@ void RknnAdapter::release() {
     
     if (rknnCtx_) {
         rknn_destroy(rknnCtx_);
-        rknnCtx_ = nullptr;
+        rknnCtx_ = 0;
         LOG_INFO("RKNN context destroyed");
     }
     
