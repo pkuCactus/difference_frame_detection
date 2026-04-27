@@ -32,7 +32,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from flask import Flask, flash, jsonify, redirect, render_template, request, send_file, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, send_file, url_for, Response
 from werkzeug.utils import secure_filename
 
 # 配置
@@ -105,6 +105,8 @@ TOOLKIT_VENV_MAP = {
         "whl_base_url": "https://github.com/airockchip/rknn-toolkit2/raw/master/rknn-toolkit2/packages",
         "versions": ["2.3.2", "2.2.0", "2.1.0", "2.0.0"],
         "note": "直接从GitHub下载对应版本whl",
+        # RKNN Toolkit2 需要 onnx.mapping 属性，onnx 1.18.0 包含该属性且有 cp312 预编译包
+        "onnx_version": "1.18.0",
     },
 }
 
@@ -672,6 +674,29 @@ class VirtualEnvManager:
                 else:
                     print(f"  ⚠ setuptools 安装失败，可能影响 RKNN 运行")
                 
+                # 安装指定版本的 onnx（RKNN Toolkit2 需要 onnx.mapping 属性）
+                onnx_version = toolkit_info.get("onnx_version")
+                if onnx_version:
+                    print(f"  -> 安装 onnx {onnx_version}...")
+                    onnx_cmd = install_cmd + [f"onnx=={onnx_version}"]
+                    onnx_process = subprocess.Popen(
+                        onnx_cmd,
+                        stdout=None,
+                        stderr=None,
+                        text=True,
+                    )
+                    try:
+                        onnx_ret = onnx_process.wait(timeout=120)
+                    except subprocess.TimeoutExpired:
+                        onnx_process.kill()
+                        onnx_process.wait()
+                        onnx_ret = -1
+                    
+                    if onnx_ret == 0:
+                        print(f"  ✓ onnx {onnx_version} 安装成功")
+                    else:
+                        print(f"  ⚠ onnx 安装失败")
+                
                 self._check_all_envs()
                 return True, "安装成功"
             else:
@@ -1120,6 +1145,44 @@ def run_conversion_in_venv_async(task: ConversionTask):
         task.message = message
 
 
+def generate_task_log_stream(task_id: str):
+    """生成 SSE 日志流"""
+    task = tasks.get(task_id)
+    if not task:
+        yield f"data: {json.dumps({'type': 'error', 'message': '任务不存在'})}\n\n"
+        return
+
+    last_index = 0
+    while True:
+        with task._log_lock:
+            current_len = len(task.log)
+            new_logs = task.log[last_index:current_len]
+            last_index = current_len
+            status = task.status
+
+        for log_msg in new_logs:
+            yield f"data: {json.dumps({'type': 'log', 'message': log_msg})}\n\n"
+
+        if status in ("completed", "failed"):
+            yield f"data: {json.dumps({'type': 'status', 'status': status, 'message': task.message})}\n\n"
+            break
+
+        time.sleep(0.1)
+
+
+@app.route("/task/<task_id>/log/stream")
+def task_log_stream(task_id: str):
+    """SSE 实时日志流接口"""
+    return Response(
+        generate_task_log_stream(task_id),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
 def _parse_worker_line(task: ConversionTask, line: str):
     """解析 convert_worker.py 的输出并实时写入日志"""
     if line.startswith("[LOG]"):
@@ -1302,26 +1365,17 @@ def convert_direct():
     output_path = OUTPUT_DIR / output_filename
     task.output_path = str(output_path)
 
-    # 执行转换
+    # 执行转换（异步）
     task.status = "converting"
     task.add_log(f"文件: {file.filename}")
     task.add_log(f"平台: {platform}")
     task.add_log(f"配置: {config.to_dict()}")
 
-    success, message = run_conversion_in_venv(task)
+    # 启动后台线程执行转换
+    thread = threading.Thread(target=run_conversion_in_venv_async, args=(task,))
+    thread.start()
 
-    task.end_time = datetime.now()
-
-    if success:
-        task.status = "completed"
-        task.message = message
-        duration = (task.end_time - task.start_time).total_seconds()
-        task.add_log(f"耗时: {duration:.2f}秒")
-    else:
-        task.status = "failed"
-        task.message = message
-
-    return render_template("result.html", task=task)
+    return render_template("converting.html", task=task)
 
 
 @app.route("/upload", methods=["POST"])

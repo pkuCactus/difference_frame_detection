@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正在转换 - ONNX转RKNN</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+            color: #00d2ff;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .status {
+            text-align: center;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            background: rgba(0, 210, 255, 0.1);
+            border: 1px solid #00d2ff;
+        }
+        .status-icon { font-size: 36px; margin-bottom: 10px; }
+        .status-title { font-size: 20px; margin-bottom: 5px; }
+        .status-message { color: rgba(255, 255, 255, 0.7); font-size: 14px; }
+        .progress-bar {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        .progress-bar-inner {
+            height: 100%;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            width: 0%;
+            transition: width 0.3s;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .info-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 8px;
+        }
+        .info-label { color: rgba(255, 255, 255, 0.5); font-size: 11px; margin-bottom: 3px; }
+        .info-value { font-size: 14px; }
+        .log-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 350px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        .log-line {
+            font-size: 13px;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .log-line:last-child { border-bottom: none; }
+        .log-line.success { color: #34c759; }
+        .log-line.error { color: #ff3b30; }
+        .log-line.warn { color: #ffc107; }
+        .log-line.info { color: #00d2ff; }
+        .actions { text-align: center; margin-top: 20px; }
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            margin-right: 10px;
+        }
+        .btn.secondary { background: rgba(255, 255, 255, 0.1); }
+        .btn.success { background: linear-gradient(90deg, #34c759, #30b350); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ONNX → RKNN 转换</h1>
+        
+        <div class="card">
+            <div class="status" id="statusBox">
+                <div class="status-icon" id="statusIcon">⏳</div>
+                <div class="status-title" id="statusTitle">正在转换</div>
+                <div class="status-message" id="statusMsg"></div>
+            </div>
+            
+            <div class="progress-bar" id="progressWrapper">
+                <div class="progress-bar-inner" id="progressBar"></div>
+            </div>
+            
+            <div class="info-grid" id="infoGrid" style="display: none;">
+                <div class="info-item">
+                    <div class="info-label">任务ID</div>
+                    <div class="info-value">{{ task.task_id }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">目标平台</div>
+                    <div class="info-value">{{ task.config.platform }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">开始时间</div>
+                    <div class="info-value">{{ task.start_time.strftime('%H:%M:%S') }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">文件大小</div>
+                    <div class="info-value" id="fileSize">-</div>
+                </div>
+            </div>
+            
+            <h3 style="margin: 15px 0 10px; font-size: 14px; display: flex; justify-content: space-between; align-items: center;">
+                <span>转换日志</span>
+                <button id="toggleLogBtn" style="background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.7); padding: 4px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;">折叠</button>
+            </h3>
+            <div class="log-box" id="logBox"></div>
+            
+            <div class="actions" id="actionsBox" style="display: none; margin-top: 15px;">
+                <a href="/download/{{ task.task_id }}" class="btn success" id="downloadBtn">下载 RKNN 模型</a>
+                <a href="/" class="btn secondary">转换新模型</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const taskId = '{{ task.task_id }}';
+        const statusIcon = document.getElementById('statusIcon');
+        const statusTitle = document.getElementById('statusTitle');
+        const statusMsg = document.getElementById('statusMsg');
+        const statusBox = document.getElementById('statusBox');
+        const progressBar = document.getElementById('progressBar');
+        const progressWrapper = document.getElementById('progressWrapper');
+        const infoGrid = document.getElementById('infoGrid');
+        const logBox = document.getElementById('logBox');
+        const toggleLogBtn = document.getElementById('toggleLogBtn');
+        const actionsBox = document.getElementById('actionsBox');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const fileSizeEl = document.getElementById('fileSize');
+        
+        let logCount = 0;
+        let logExpanded = true;  // 转换过程中默认展开
+        
+        // 折叠/展开日志
+        toggleLogBtn.addEventListener('click', function() {
+            logExpanded = !logExpanded;
+            logBox.style.display = logExpanded ? 'block' : 'none';
+            toggleLogBtn.textContent = logExpanded ? '折叠' : '展开';
+        });
+        
+        function addLog(msg, type = '') {
+            const line = document.createElement('div');
+            line.className = 'log-line ' + type;
+            line.textContent = msg;
+            logBox.appendChild(line);
+            logCount++;
+            progressBar.style.width = Math.min(logCount * 5, 90) + '%';
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+        
+        function setStatusCompleted() {
+            statusIcon.textContent = '✓';
+            statusTitle.textContent = '转换成功';
+            statusBox.style.background = 'rgba(52, 199, 89, 0.2)';
+            statusBox.style.borderColor = '#34c759';
+            progressBar.style.width = '100%';
+            progressWrapper.style.display = 'none';
+            infoGrid.style.display = 'grid';
+            actionsBox.style.display = 'block';
+            // 转换完成后默认折叠日志
+            logExpanded = false;
+            logBox.style.display = 'none';
+            toggleLogBtn.textContent = '展开';
+        }
+        
+        function setStatusFailed(msg) {
+            statusIcon.textContent = '✗';
+            statusTitle.textContent = '转换失败';
+            statusMsg.textContent = msg;
+            statusBox.style.background = 'rgba(255, 59, 48, 0.2)';
+            statusBox.style.borderColor = '#ff3b30';
+            progressBar.style.width = '100%';
+            progressWrapper.style.display = 'none';
+            infoGrid.style.display = 'grid';
+            actionsBox.style.display = 'block';
+            downloadBtn.style.display = 'none';
+            // 转换完成后默认折叠日志
+            logExpanded = false;
+            logBox.style.display = 'none';
+            toggleLogBtn.textContent = '展开';
+        }
+        
+        // 连接 SSE
+        const eventSource = new EventSource('/task/' + taskId + '/log/stream');
+        
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'log') {
+                let logType = '';
+                const msg = data.message;
+                if (msg.includes('成功') || msg.includes('[SUCCESS]')) logType = 'success';
+                else if (msg.includes('失败') || msg.includes('ERROR')) logType = 'error';
+                else if (msg.includes('WARN')) logType = 'warn';
+                else if (msg.startsWith('I ') || msg.includes('Loading') || msg.includes('OpFusing')) logType = 'info';
+                addLog(msg, logType);
+                
+                // 解析文件大小
+                if (msg.includes('模型大小:') || msg.includes('[SIZE]')) {
+                    const sizeMatch = msg.match(/(\d+\.?\d*)\s*MB/);
+                    if (sizeMatch) fileSizeEl.textContent = sizeMatch[1] + ' MB';
+                }
+            } else if (data.type === 'status') {
+                if (data.status === 'completed') {
+                    setStatusCompleted();
+                } else if (data.status === 'failed') {
+                    setStatusFailed(data.message);
+                }
+                eventSource.close();
+            } else if (data.type === 'error') {
+                addLog(data.message, 'error');
+                setStatusFailed(data.message);
+                eventSource.close();
+            }
+        };
+        
+        eventSource.onerror = function() {
+            addLog('SSE 连接中断，请刷新页面', 'error');
+            eventSource.close();
+        };
+    </script>
+</body>
+</html>
