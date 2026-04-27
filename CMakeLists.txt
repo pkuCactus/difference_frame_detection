@@ -3,6 +3,17 @@ cmake_minimum_required(VERSION 3.14)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(FetchDeps)
 
+option(RK3566_PLATFORM "Build for RK3566 platform with RKNN SDK" OFF)
+
+if(RK3566_PLATFORM)
+    if(NOT CMAKE_TOOLCHAIN_FILE)
+        include(DownloadNDK)
+    endif()
+    message(STATUS "Building for RK3566 platform with RKNN SDK")
+else()
+    message(STATUS "Building with stub mode (non-RK3566 platform)")
+endif()
+
 project(difference_detection VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -10,13 +21,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_TESTS "Build unit tests" ON)
-option(RK3566_PLATFORM "Build for RK3566 platform with RKNN SDK" OFF)
 
 if(RK3566_PLATFORM)
     add_definitions(-DRK3566_PLATFORM)
-    message(STATUS "Building for RK3566 platform with RKNN SDK")
-else()
-    message(STATUS "Building with stub mode (non-RK3566 platform)")
 endif()
 
 # 初始化核心依赖
@@ -68,7 +75,28 @@ target_link_libraries(difference_detection PRIVATE
 )
 
 if(RK3566_PLATFORM)
-    find_library(RKNN_LIBRARY rknn_api HINTS /usr/lib /lib)
+    EnsureSubmodule(third-party/rknn-sdk)
+
+    set(RKNN_SDK_PATH "${CMAKE_SOURCE_DIR}/third-party/rknn-sdk" CACHE PATH "Path to RKNN SDK")
+
+    find_path(RKNN_INCLUDE_DIR rknn_api.h
+        HINTS "${RKNN_SDK_PATH}/rknn_runtime/include"
+              "${RKNN_SDK_PATH}/runtime/include"
+              "${RKNN_SDK_PATH}/include"
+    )
+
+    find_library(RKNN_LIBRARY rknn_api
+        HINTS "${RKNN_SDK_PATH}/rknn_runtime/lib/linux/arm64"
+              "${RKNN_SDK_PATH}/runtime/lib/linux/arm64"
+              "${RKNN_SDK_PATH}/lib"
+              /usr/lib /lib
+    )
+
+    if(RKNN_INCLUDE_DIR)
+        target_include_directories(difference_detection PRIVATE ${RKNN_INCLUDE_DIR})
+        message(STATUS "Found RKNN include dir: ${RKNN_INCLUDE_DIR}")
+    endif()
+
     if(RKNN_LIBRARY)
         target_link_libraries(difference_detection PRIVATE ${RKNN_LIBRARY})
         message(STATUS "Found RKNN library: ${RKNN_LIBRARY}")
