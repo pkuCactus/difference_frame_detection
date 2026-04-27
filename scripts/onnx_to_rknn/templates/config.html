@@ -153,25 +153,25 @@
 <body>
     <div class="container">
         <h1>配置转换参数</h1>
-        
+
         <div class="card">
             <div class="section-title">
                 <span class="section-icon">📄</span> 模型信息
             </div>
-            
+
             <div class="info-box">
                 <div class="info-item"><strong>文件名:</strong> {{ filename }}</div>
                 <div class="info-item"><strong>任务ID:</strong> {{ task_id }}</div>
                 {% if onnx_info.success %}
                 <div class="info-item"><strong>文件大小:</strong> {{ onnx_info.file_size }}</div>
-                
+
                 <div class="info-item" style="margin-top: 12px;"><strong>输入节点:</strong></div>
                 {% for inp in onnx_info.inputs %}
                 <div class="info-item" style="margin-left: 20px;">
                     {{ inp.name }}: {{ inp.shape }}
                 </div>
                 {% endfor %}
-                
+
                 <div class="info-item" style="margin-top: 12px;"><strong>输出节点:</strong></div>
                 {% for out in onnx_info.outputs %}
                 <div class="info-item" style="margin-left: 20px;">
@@ -182,24 +182,24 @@
                 <div class="error">无法解析ONNX模型: {{ onnx_info.error }}</div>
                 {% endif %}
             </div>
-            
+
             {% for toolkit_type, status in venv_status.items() %}
             <div class="info-item" style="font-size: 12px; color: rgba(255,255,255,0.5);">
                 {{ toolkit_type }}: {{ '✓ 已就绪' if status.rknn_installed else '✗ 未就绪' }}
             </div>
             {% endfor %}
         </div>
-        
+
         <form action="/convert" method="post">
             <input type="hidden" name="task_id" value="{{ task_id }}">
             <input type="hidden" name="filepath" value="{{ filepath }}">
-            
+
             <!-- 基本配置 -->
             <div class="card">
                 <div class="section-title">
                     <span class="section-icon">🎯</span> 基本配置
                 </div>
-                
+
                 <div class="form-group">
                     <label>目标平台 <span style="color: #ff3b30;">*</span></label>
                     <select name="platform" id="platformSelect" required onchange="checkPlatform()">
@@ -221,7 +221,7 @@
                     </select>
                     <div id="platformWarn" class="platform-warn" style="display: none;"></div>
                 </div>
-                
+
                 <div class="input-row">
                     <div class="form-group">
                         <label>输入高度</label>
@@ -234,13 +234,13 @@
                         <div class="hint">留空则自动检测</div>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label>输入节点名称</label>
                     <input type="text" name="input_name" placeholder="留空自动检测">
                     <div class="hint">多输入模型需指定，如: images</div>
                 </div>
-                
+
                 <div class="form-group">
                     <label>输入数据类型</label>
                     <select name="input_dtype">
@@ -250,64 +250,64 @@
                         <option value="uint8">uint8</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
                     <label>批次大小</label>
                     <input type="number" name="batch_size" value="1" min="1">
                     <div class="hint">RKNN支持批量推理，增加可提升吞吐量</div>
                 </div>
             </div>
-            
+
             <!-- 预处理参数 -->
             <div class="card">
                 <div class="section-title">
                     <span class="section-icon">🔧</span> 预处理参数
                     <span class="toggle-btn" onclick="toggleSection('preprocess')">展开/收起</span>
                 </div>
-                
+
                 <div id="preprocess" class="collapsible show">
                     <div class="form-group">
                         <label>均值归一化 (Mean Values)</label>
                         <input type="text" name="mean_values" placeholder="如: 0, 0, 0 或 123.675, 116.28, 103.53">
                         <div class="hint">输入像素减去均值，按R,G,B顺序，逗号分隔</div>
                     </div>
-                    
+
                     <div class="form-group">
                         <label>标准差归一化 (Std Values)</label>
                         <input type="text" name="std_values" placeholder="如: 1, 1, 1 或 58.395, 57.12, 57.375">
                         <div class="hint">输入像素除以标准差，按R,G,B顺序，逗号分隔</div>
                     </div>
-                    
+
                     <div class="warning" style="margin-top: 10px;">
                         💡 归一化公式: output = (input - mean) / std<br>
                         常见配置: PyTorch模型 mean=[123.675,116.28,103.53], std=[58.395,57.12,57.375]
                     </div>
                 </div>
             </div>
-            
+
             <!-- 量化配置 -->
             <div class="card">
                 <div class="section-title">
                     <span class="section-icon">📊</span> 量化配置
                 </div>
-                
+
                 <div class="checkbox-group">
                     <input type="checkbox" name="do_quantization" id="quantCheckbox" onchange="toggleQuantization()">
                     <label for="quantCheckbox">启用 INT8 量化</label>
                 </div>
-                
+
                 <div id="quantOptions" class="collapsible">
                     <div class="warning">
                         ⚠️ 量化需要提供校准数据集（txt文件，每行一个输入图片路径）<br>
                         建议100-500张代表性图片，覆盖各种场景
                     </div>
-                    
+
                     <div class="form-group">
                         <label>量化数据集路径 <span style="color: #ff3b30;">*</span></label>
                         <input type="text" name="dataset_path" placeholder="如: /path/to/dataset.txt">
                         <div class="hint">txt文件，每行一个图片路径</div>
                     </div>
-                    
+
                     <div class="form-group">
                         <label>量化数据类型</label>
                         <select name="quantized_dtype">
@@ -316,7 +316,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label>量化算法</label>
                         <select name="quantized_algorithm">
@@ -328,14 +328,14 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- 优化配置 -->
             <div class="card">
                 <div class="section-title">
                     <span class="section-icon">⚡</span> 优化配置
                     <span class="toggle-btn" onclick="toggleSection('optimize')">展开/收起</span>
                 </div>
-                
+
                 <div id="optimize" class="collapsible show">
                     <div class="form-group">
                         <label>优化级别</label>
@@ -346,12 +346,12 @@
                         </select>
                         <div class="hint">级别越高优化越多，但可能影响精度</div>
                     </div>
-                    
+
                     <div class="checkbox-group">
                         <input type="checkbox" name="single_core_mode" id="singleCore">
                         <label for="singleCore">单核模式 (限制只用一个NPU核心)</label>
                     </div>
-                    
+
                     <div class="form-group">
                         <label>模型数据大小限制 (字节)</label>
                         <input type="number" name="model_data_size" placeholder="留空不限制">
@@ -359,7 +359,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- 操作按钮 -->
             <div class="card" style="text-align: center;">
                 <button type="submit" class="btn">🚀 开始转换</button>
@@ -367,39 +367,39 @@
             </div>
         </form>
     </div>
-    
+
     <script>
         function toggleSection(id) {
             const el = document.getElementById(id);
             el.classList.toggle('show');
         }
-        
+
         function toggleQuantization() {
             const checkbox = document.getElementById('quantCheckbox');
             const options = document.getElementById('quantOptions');
             options.classList.toggle('show', checkbox.checked);
         }
-        
+
         const venvStatus = {{ venv_status | tojson }};
-        
+
         function checkPlatform() {
             const select = document.getElementById('platformSelect');
             const warn = document.getElementById('platformWarn');
             const option = select.options[select.selectedIndex];
             const toolkit = option.dataset.toolkit;
-            
+
             if (toolkit) {
                 const status = venvStatus[toolkit];
-                if (status && status.rknn_installed) {
-                    warn.innerHTML = '✓ 使用 ' + toolkit + ' 环境（已就绪）';
+                if (status?.rknn_installed) {
+                    warn.innerHTML = '✓ 使用 {toolkit} 环境（已就绪）';
                     warn.style.color = '#34c759';
                     warn.style.display = 'block';
-                } else if (status && status.exists) {
-                    warn.innerHTML = '⚠️ ' + toolkit + ' 环境已创建，正在安装RKNN...';
+                } else if (status?.exists) {
+                    warn.innerHTML = '⚠️ {toolkit} 环境已创建，正在安装RKNN...';
                     warn.style.color = '#ffc107';
                     warn.style.display = 'block';
                 } else {
-                    warn.innerHTML = '⚠️ ' + toolkit + ' 环境初始化失败，请联系管理员';
+                    warn.innerHTML = '⚠️ {toolkit} 环境初始化失败，请联系管理员';
                     warn.style.color = '#ff3b30';
                     warn.style.display = 'block';
                 }

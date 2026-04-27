@@ -17,6 +17,7 @@ ONNX转RKNN Web转换工具
     访问 http://localhost:5000
 """
 
+import argparse
 import json
 import os
 import shutil
@@ -31,7 +32,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from flask import Flask, flash, jsonify, redirect, render_template, request, send_file, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, send_file, url_for, Response
 from werkzeug.utils import secure_filename
 
 # 配置
@@ -42,6 +43,10 @@ DATASET_DIR = BASE_DIR / "datasets"
 # 虚拟环境目录使用 TMPDIR
 TMPDIR = Path(os.environ.get("TMPDIR", "/tmp"))
 VENV_DIR = TMPDIR / "onnx_to_rknn_venvs"
+
+# 清华镜像源（加速国内下载）
+TSINGHUA_PYPI_INDEX = "https://pypi.tuna.tsinghua.edu.cn/simple"
+TSINGHUA_PYTHON_MIRROR = "https://mirrors.tuna.tsinghua.edu.cn/python/"
 
 # 确保目录存在
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -100,6 +105,8 @@ TOOLKIT_VENV_MAP = {
         "whl_base_url": "https://github.com/airockchip/rknn-toolkit2/raw/master/rknn-toolkit2/packages",
         "versions": ["2.3.2", "2.2.0", "2.1.0", "2.0.0"],
         "note": "直接从GitHub下载对应版本whl",
+        # RKNN Toolkit2 需要 onnx.mapping 属性，onnx 1.18.0 包含该属性且有 cp312 预编译包
+        "onnx_version": "1.18.0",
     },
 }
 
@@ -296,17 +303,26 @@ class VirtualEnvManager:
         except Exception as e:
             print(f"  ✗ 脚本安装异常: {e}")
 
-        # 方法2: 通过 pip 安装
+        # 方法2: 通过 pip 安装（使用清华源）
         try:
-            print("  -> 尝试通过 pip 安装 uv...")
+            print("  -> 尝试通过 pip 安装 uv（清华源）...")
             pip_cmds = ["pip", "pip3", sys.executable + " -m pip"]
             for pip_cmd in pip_cmds:
                 parts = pip_cmd.split() if " " in pip_cmd else [pip_cmd]
-                result = subprocess.run(
-                    parts + ["install", "uv"],
-                    capture_output=True, text=True, timeout=120
+                process = subprocess.Popen(
+                    parts + ["install", "uv", "-i", TSINGHUA_PYPI_INDEX],
+                    stdout=None,
+                    stderr=None,
+                    text=True,
                 )
-                if result.returncode == 0:
+                try:
+                    returncode = process.wait(timeout=120)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+                    continue
+                
+                if returncode == 0:
                     uv_path = shutil.which("uv")
                     if uv_path:
                         print(f"  ✓ uv 通过 pip 安装成功: {uv_path}")
@@ -337,22 +353,17 @@ class VirtualEnvManager:
             except Exception:
                 pass
 
-        # 使用 uv 安装（实时输出进度）
+        # 使用 uv 安装（实时输出进度，使用清华镜像）
         try:
-            print(f"  -> 使用 uv 安装 {py_version}...")
+            print(f"  -> 使用 uv 安装 {py_version}（清华镜像）...")
+
             process = subprocess.Popen(
-                [uv_path, "python", "install", py_version],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                [uv_path, "python", "install", py_version, "--mirror", TSINGHUA_PYTHON_MIRROR],
+                stdout=None,
+                stderr=None,
                 text=True,
                 bufsize=1,
             )
-
-            if process.stdout:
-                for line in process.stdout:
-                    line = line.rstrip("\n")
-                    if line:
-                        print(f"    {line}")
 
             try:
                 returncode = process.wait(timeout=3600)
@@ -466,7 +477,10 @@ class VirtualEnvManager:
             try:
                 cmd = [uv_path, "venv", str(venv_path), "--python", py_cmd_name]
                 print(f"  -> 执行: {' '.join(cmd)}")
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                env = os.environ.copy()
+                env["UV_NO_PROGRESS"] = "1"
+                env["NO_COLOR"] = "1"
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
                 print(f"  -> uv venv 返回码: {result.returncode}")
                 if result.stdout:
                     print(f"  -> stdout: {result.stdout.strip()[:200]}")
@@ -562,18 +576,18 @@ class VirtualEnvManager:
             return False, f"创建失败: {str(e)}"
 
     def _build_install_cmd(self, toolkit_type: str) -> tuple[list[str], str]:
-        """构建安装命令，优先使用 uv pip，回退到标准 pip"""
+        """构建安装命令，优先使用 uv pip（清华源），回退到标准 pip"""
         uv_path = self._get_uv_path()
         python_path = self._get_python_path(toolkit_type)
         pip_path = self._get_pip_path(toolkit_type)
 
         if uv_path:
-            return [uv_path, "pip", "install", "--python", str(python_path)], "uv"
+            return [uv_path, "pip", "install", "--python", str(python_path), "-i", TSINGHUA_PYPI_INDEX], "uv"
 
         use_pip_module = not pip_path.exists()
         if use_pip_module:
-            return [str(python_path), "-m", "pip", "install"], "pip"
-        return [str(pip_path), "install"], "pip"
+            return [str(python_path), "-m", "pip", "install", "-i", TSINGHUA_PYPI_INDEX], "pip"
+        return [str(pip_path), "install", "-i", TSINGHUA_PYPI_INDEX], "pip"
 
     def install_rknn(self, toolkit_type: str) -> tuple[bool, str]:
         """在虚拟环境中安装rknn-toolkit（优先使用 uv pip）"""
@@ -616,24 +630,78 @@ class VirtualEnvManager:
                 return False, "下载失败"
 
             print(f"安装本地 whl: {downloaded_whl.name}")
-            print(" ".join(install_cmd) + f" {str(downloaded_whl)}")
-            result = subprocess.run(
-                install_cmd + [str(downloaded_whl)],
-                capture_output=True, text=True, timeout=3600
+            cmd_display = " ".join(install_cmd) + f" {str(downloaded_whl)}"
+            print(cmd_display)
+
+            cmd = install_cmd + [str(downloaded_whl)]
+
+            process = subprocess.Popen(
+                cmd,
+                stdout=None,  # 直接输出到终端，保留 uv 原生进度条
+                stderr=None,
+                text=True,
             )
 
-            if result.returncode == 0:
-                lines = [l.strip() for l in result.stdout.strip().split('\n') if l.strip()]
-                if lines:
-                    for line in lines[-3:]:
-                        print(f"  {line[:200]}")
-                print(f"✓ 安装成功")
+            try:
+                returncode = process.wait(timeout=3600)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+                print(f"✗ 安装超时")
+                return False, "安装超时"
+
+            if returncode == 0:
+                print(f"✓ RKNN whl 安装成功")
+                
+                # 安装 setuptools<72（pkg_resources 在 72+ 版本被移除）
+                print(f"  -> 安装 setuptools<72（包含 pkg_resources）...")
+                setuptools_cmd = install_cmd + ["setuptools<72"]
+                setuptools_process = subprocess.Popen(
+                    setuptools_cmd,
+                    stdout=None,
+                    stderr=None,
+                    text=True,
+                )
+                try:
+                    setuptools_ret = setuptools_process.wait(timeout=120)
+                except subprocess.TimeoutExpired:
+                    setuptools_process.kill()
+                    setuptools_process.wait()
+                    setuptools_ret = -1
+                
+                if setuptools_ret == 0:
+                    print(f"  ✓ setuptools 安装成功")
+                else:
+                    print(f"  ⚠ setuptools 安装失败，可能影响 RKNN 运行")
+                
+                # 安装指定版本的 onnx（RKNN Toolkit2 需要 onnx.mapping 属性）
+                onnx_version = toolkit_info.get("onnx_version")
+                if onnx_version:
+                    print(f"  -> 安装 onnx {onnx_version}...")
+                    onnx_cmd = install_cmd + [f"onnx=={onnx_version}"]
+                    onnx_process = subprocess.Popen(
+                        onnx_cmd,
+                        stdout=None,
+                        stderr=None,
+                        text=True,
+                    )
+                    try:
+                        onnx_ret = onnx_process.wait(timeout=120)
+                    except subprocess.TimeoutExpired:
+                        onnx_process.kill()
+                        onnx_process.wait()
+                        onnx_ret = -1
+                    
+                    if onnx_ret == 0:
+                        print(f"  ✓ onnx {onnx_version} 安装成功")
+                    else:
+                        print(f"  ⚠ onnx 安装失败")
+                
                 self._check_all_envs()
                 return True, "安装成功"
             else:
-                err = result.stderr.strip()[:400] if result.stderr else "未知错误"
-                print(f"✗ 安装失败: {err}")
-                return False, "安装失败"
+                print(f"✗ 安装失败 (返回码: {returncode})")
+                return False, f"安装失败 (返回码: {returncode})"
 
         except subprocess.TimeoutExpired as e:
             print(f"✗ 安装超时: {e}")
@@ -1077,6 +1145,44 @@ def run_conversion_in_venv_async(task: ConversionTask):
         task.message = message
 
 
+def generate_task_log_stream(task_id: str):
+    """生成 SSE 日志流"""
+    task = tasks.get(task_id)
+    if not task:
+        yield f"data: {json.dumps({'type': 'error', 'message': '任务不存在'})}\n\n"
+        return
+
+    last_index = 0
+    while True:
+        with task._log_lock:
+            current_len = len(task.log)
+            new_logs = task.log[last_index:current_len]
+            last_index = current_len
+            status = task.status
+
+        for log_msg in new_logs:
+            yield f"data: {json.dumps({'type': 'log', 'message': log_msg})}\n\n"
+
+        if status in ("completed", "failed"):
+            yield f"data: {json.dumps({'type': 'status', 'status': status, 'message': task.message})}\n\n"
+            break
+
+        time.sleep(0.1)
+
+
+@app.route("/task/<task_id>/log/stream")
+def task_log_stream(task_id: str):
+    """SSE 实时日志流接口"""
+    return Response(
+        generate_task_log_stream(task_id),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
 def _parse_worker_line(task: ConversionTask, line: str):
     """解析 convert_worker.py 的输出并实时写入日志"""
     if line.startswith("[LOG]"):
@@ -1259,26 +1365,17 @@ def convert_direct():
     output_path = OUTPUT_DIR / output_filename
     task.output_path = str(output_path)
 
-    # 执行转换
+    # 执行转换（异步）
     task.status = "converting"
     task.add_log(f"文件: {file.filename}")
     task.add_log(f"平台: {platform}")
     task.add_log(f"配置: {config.to_dict()}")
 
-    success, message = run_conversion_in_venv(task)
+    # 启动后台线程执行转换
+    thread = threading.Thread(target=run_conversion_in_venv_async, args=(task,))
+    thread.start()
 
-    task.end_time = datetime.now()
-
-    if success:
-        task.status = "completed"
-        task.message = message
-        duration = (task.end_time - task.start_time).total_seconds()
-        task.add_log(f"耗时: {duration:.2f}秒")
-    else:
-        task.status = "failed"
-        task.message = message
-
-    return render_template("result.html", task=task)
+    return render_template("converting.html", task=task)
 
 
 @app.route("/upload", methods=["POST"])
@@ -1615,7 +1712,7 @@ def init_virtual_environments():
     results = {}
     for toolkit_type, info in TOOLKIT_VENV_MAP.items():
         print(f"\n[{toolkit_type}]")
-        print(f"  虚拟环境: {info['venvName']}")
+        print(f"  虚拟环境: {info['venv_name']}")
         print(f"  包名: {info['package_name']}")
 
         status = venv_manager.get_status(toolkit_type)
@@ -1648,7 +1745,7 @@ def _check_env_status_only() -> dict:
     results = {}
     for toolkit_type, info in TOOLKIT_VENV_MAP.items():
         print(f"\n[{toolkit_type}]")
-        print(f"  虚拟环境: {info['venvName']}")
+        print(f"  虚拟环境: {info['venv_name']}")
         print(f"  包名: {info['package_name']}")
 
         status = venv_manager.get_status(toolkit_type)
@@ -1687,8 +1784,16 @@ def _check_env_status_only() -> dict:
 
 
 if __name__ == "__main__":
-    # 启动时只检查状态，不自动安装
-    init_results = init_virtual_environments()
+    parser = argparse.ArgumentParser(description="ONNX转RKNN Web转换工具")
+    parser.add_argument("--skip-init-env", action="store_true",
+                        help="跳过虚拟环境初始化检查")
+    args = parser.parse_args()
+
+    if args.skip_init_env:
+        print("跳过环境初始化...")
+        init_results = {}
+    else:
+        init_results = init_virtual_environments()
 
     print()
     print("ONNX转RKNN Web转换工具")

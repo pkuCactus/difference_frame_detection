@@ -123,11 +123,6 @@ def convert_onnx_to_rknn(
             load_args["input_size_list"] = [tuple(input_size)]
             print(f"[LOG] 输入尺寸: {input_size}")
             
-        input_dtype = config.get("input_dtype", "float32")
-        if input_dtype:
-            load_args["input_dtype_list"] = [input_dtype]
-            print(f"[LOG] 输入数据类型: {input_dtype}")
-            
         print(f"[LOG] 加载ONNX: {onnx_path}")
         ret = rknn.load_onnx(**load_args)
         if ret != 0:
