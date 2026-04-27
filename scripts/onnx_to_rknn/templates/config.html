@@ -161,7 +161,7 @@
             
             <div class="info-box">
                 <div class="info-item"><strong>文件名:</strong> {{ filename }}</div>
-                <div class="info-item"><strong>任务ID:</strong> {{ taskId }}</div>
+                <div class="info-item"><strong>任务ID:</strong> {{ task_id }}</div>
                 {% if onnx_info.success %}
                 <div class="info-item"><strong>文件大小:</strong> {{ onnx_info.file_size }}</div>
                 
@@ -185,13 +185,13 @@
             
             {% for toolkit_type, status in venv_status.items() %}
             <div class="info-item" style="font-size: 12px; color: rgba(255,255,255,0.5);">
-                {{ toolkit_type }}: {{ '✓ 已就绪' if status.rknnInstalled else '✗ 未就绪' }}
+                {{ toolkit_type }}: {{ '✓ 已就绪' if status.rknn_installed else '✗ 未就绪' }}
             </div>
             {% endfor %}
         </div>
         
         <form action="/convert" method="post">
-            <input type="hidden" name="taskId" value="{{ taskId }}">
+            <input type="hidden" name="task_id" value="{{ task_id }}">
             <input type="hidden" name="filepath" value="{{ filepath }}">
             
             <!-- 基本配置 -->
@@ -390,7 +390,7 @@
             
             if (toolkit) {
                 const status = venvStatus[toolkit];
-                if (status && status.rknnInstalled) {
+                if (status && status.rknn_installed) {
                     warn.innerHTML = '✓ 使用 ' + toolkit + ' 环境（已就绪）';
                     warn.style.color = '#34c759';
                     warn.style.display = 'block';

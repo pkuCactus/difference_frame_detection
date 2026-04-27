@@ -119,7 +119,7 @@
         <div class="env-bar">
             {% if venv_status %}
             {% for toolkit_type, status in venv_status.items() %}
-            <span class="{{ 'ok' if status.rknnInstalled else 'warn' }}">{{ toolkit_type }}: {{ '✓' if status.rknnInstalled else '○' }}</span>
+            <span class="{{ 'ok' if status.rknn_installed else 'warn' }}">{{ toolkit_type }}: {{ '✓' if status.rknn_installed else '○' }}</span>
             {% endfor %}
             {% else %}
             <span>环境状态: 加载中...</span>
@@ -290,8 +290,8 @@
             const opt = platform.selectedOptions[0];
             const toolkit = opt.parentElement.label;
             if(toolkit && venvStatus[toolkit]) {
-                platformStatus.textContent = venvStatus[toolkit].rknnInstalled ? '✓ 环境就绪' : '○ 环境未就绪';
-                platformStatus.className = 'platform-status ' + (venvStatus[toolkit].rknnInstalled ? 'ok' : 'warn');
+                platformStatus.textContent = venvStatus[toolkit].rknn_installed ? '✓ 环境就绪' : '○ 环境未就绪';
+                platformStatus.className = 'platform-status ' + (venvStatus[toolkit].rknn_installed ? 'ok' : 'warn');
             } else {
                 platformStatus.textContent = '';
             }

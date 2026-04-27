@@ -63,13 +63,13 @@ class TestSafeUnderDir:
 
 # ---------------------------- _add_task ---------------------------
 
-def _make_task(taskId: str, status: str = "completed",
+def _make_task(task_id: str, status: str = "completed",
                start_offset_seconds: int = 0) -> "app_module.ConversionTask":
     """构造一个最小可用的 ConversionTask 用于测试"""
     cfg = app_module.ConversionConfig(platform="RK3588")
-    task = app_module.ConversionTask(taskId, "/fake/path.onnx", cfg)
+    task = app_module.ConversionTask(task_id, "/fake/path.onnx", cfg)
     task.status = status
-    task.startTime = datetime.now() - timedelta(seconds=start_offset_seconds)
+    task.start_time = datetime.now() - timedelta(seconds=start_offset_seconds)
     return task
 
 
@@ -176,8 +176,8 @@ class TestCleanupTaskFiles:
         rknn.write_bytes(b"y")
 
         task = _make_task("abc", status="completed")
-        task.onnxPath = str(onnx)
-        task.outputPath = str(rknn)
+        task.onnx_path = str(onnx)
+        task.output_path = str(rknn)
 
         app_module._cleanup_task_files(task)
 
@@ -197,8 +197,8 @@ class TestCleanupTaskFiles:
         external.write_bytes(b"keep me")
 
         task = _make_task("ext", status="completed")
-        task.onnxPath = str(external)
-        task.outputPath = None
+        task.onnx_path = str(external)
+        task.output_path = None
 
         app_module._cleanup_task_files(task)
 

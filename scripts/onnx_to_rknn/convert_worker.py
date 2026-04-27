@@ -35,16 +35,16 @@ CHIP_PLATFORMS = {
 
 
 def convert_onnx_to_rknn(
-    onnxPath: str,
-    outputPath: str,
+    onnx_path: str,
+    output_path: str,
     config: dict
 ) -> bool:
     """
     执行ONNX到RKNN转换
     
     Args:
-        onnxPath: ONNX模型路径
-        outputPath: 输出RKNN路径
+        onnx_path: ONNX模型路径
+        output_path: 输出RKNN路径
         config: 转换配置
         
     Returns:
@@ -56,122 +56,122 @@ def convert_onnx_to_rknn(
         print(f"[ERROR] 不支持的平台: {platform}")
         return False
         
-    targetPlatform = CHIP_PLATFORMS[platform]["target"]
+    target_platform = CHIP_PLATFORMS[platform]["target"]
     
     try:
         rknn = RKNN()
         
         # 构建配置参数
-        rknnConfig = {"target_platform": targetPlatform}
+        rknn_config = {"target_platform": target_platform}
         
         # 预处理参数
-        meanValues = config.get("meanValues")
-        if meanValues:
-            rknnConfig["mean_values"] = meanValues
-            print(f"[LOG] 均值归一化: {meanValues}")
+        mean_values = config.get("mean_values")
+        if mean_values:
+            rknn_config["mean_values"] = mean_values
+            print(f"[LOG] 均值归一化: {mean_values}")
             
-        stdValues = config.get("stdValues")
-        if stdValues:
-            rknnConfig["std_values"] = stdValues
-            print(f"[LOG] 标准差归一化: {stdValues}")
+        std_values = config.get("std_values")
+        if std_values:
+            rknn_config["std_values"] = std_values
+            print(f"[LOG] 标准差归一化: {std_values}")
             
         # 量化参数
-        doQuantization = config.get("doQuantization", False)
-        if doQuantization:
-            quantizedDtype = config.get("quantizedDtype", "asymmetric_quantized-u8")
-            quantizedAlgorithm = config.get("quantizedAlgorithm", "normal")
-            rknnConfig["quantized_dtype"] = quantizedDtype
-            rknnConfig["quantized_algorithm"] = quantizedAlgorithm
-            print(f"[LOG] 量化类型: {quantizedDtype}")
-            print(f"[LOG] 量化算法: {quantizedAlgorithm}")
+        do_quantization = config.get("do_quantization", False)
+        if do_quantization:
+            quantized_dtype = config.get("quantized_dtype", "asymmetric_quantized-u8")
+            quantized_algorithm = config.get("quantized_algorithm", "normal")
+            rknn_config["quantized_dtype"] = quantized_dtype
+            rknn_config["quantized_algorithm"] = quantized_algorithm
+            print(f"[LOG] 量化类型: {quantized_dtype}")
+            print(f"[LOG] 量化算法: {quantized_algorithm}")
             
         # 优化参数
-        optimizationLevel = config.get("optimizationLevel", 2)
-        rknnConfig["optimization_level"] = optimizationLevel
-        print(f"[LOG] 优化级别: {optimizationLevel}")
+        optimization_level = config.get("optimization_level", 2)
+        rknn_config["optimization_level"] = optimization_level
+        print(f"[LOG] 优化级别: {optimization_level}")
         
-        singleCoreMode = config.get("singleCoreMode", False)
-        if singleCoreMode:
-            rknnConfig["single_core_mode"] = True
+        single_core_mode = config.get("single_core_mode", False)
+        if single_core_mode:
+            rknn_config["single_core_mode"] = True
             print("[LOG] 单核模式: 启用")
             
-        modelDataSize = config.get("modelDataSize")
-        if modelDataSize:
-            rknnConfig["model_data_size"] = modelDataSize
-            print(f"[LOG] 模型数据大小限制: {modelDataSize}")
+        model_data_size = config.get("model_data_size")
+        if model_data_size:
+            rknn_config["model_data_size"] = model_data_size
+            print(f"[LOG] 模型数据大小限制: {model_data_size}")
             
-        print(f"[LOG] 目标平台: {platform} ({targetPlatform})")
-        print(f"[LOG] 配置参数: {rknnConfig}")
+        print(f"[LOG] 目标平台: {platform} ({target_platform})")
+        print(f"[LOG] 配置参数: {rknn_config}")
         
         # 应用配置
-        ret = rknn.config(**rknnConfig)
+        ret = rknn.config(**rknn_config)
         if ret != 0:
             print(f"[ERROR] 配置失败: ret={ret}")
             return False
         print("[LOG] 配置成功")
         
         # 加载ONNX模型
-        loadArgs = {"model": onnxPath}
+        load_args = {"model": onnx_path}
         
-        inputName = config.get("inputName")
-        if inputName:
-            loadArgs["inputs"] = [inputName]
-            print(f"[LOG] 输入节点: {inputName}")
+        input_name = config.get("input_name")
+        if input_name:
+            load_args["inputs"] = [input_name]
+            print(f"[LOG] 输入节点: {input_name}")
             
-        inputSize = config.get("inputSize")
-        if inputSize:
-            loadArgs["input_size_list"] = [tuple(inputSize)]
-            print(f"[LOG] 输入尺寸: {inputSize}")
+        input_size = config.get("input_size")
+        if input_size:
+            load_args["input_size_list"] = [tuple(input_size)]
+            print(f"[LOG] 输入尺寸: {input_size}")
             
-        inputDtype = config.get("inputDtype", "float32")
-        if inputDtype:
-            loadArgs["input_dtype_list"] = [inputDtype]
-            print(f"[LOG] 输入数据类型: {inputDtype}")
+        input_dtype = config.get("input_dtype", "float32")
+        if input_dtype:
+            load_args["input_dtype_list"] = [input_dtype]
+            print(f"[LOG] 输入数据类型: {input_dtype}")
             
-        print(f"[LOG] 加载ONNX: {onnxPath}")
-        ret = rknn.load_onnx(**loadArgs)
+        print(f"[LOG] 加载ONNX: {onnx_path}")
+        ret = rknn.load_onnx(**load_args)
         if ret != 0:
             print(f"[ERROR] 加载ONNX失败: ret={ret}")
             return False
         print("[LOG] 加载ONNX成功")
         
         # 构建
-        buildArgs = {"do_quantization": False}
+        build_args = {"do_quantization": False}
         
-        datasetPath = config.get("datasetPath")
-        if doQuantization and datasetPath:
-            buildArgs["do_quantization"] = True
-            buildArgs["dataset"] = datasetPath
-            print(f"[LOG] 启用量化，数据集: {datasetPath}")
+        dataset_path = config.get("dataset_path")
+        if do_quantization and dataset_path:
+            build_args["do_quantization"] = True
+            build_args["dataset"] = dataset_path
+            print(f"[LOG] 启用量化，数据集: {dataset_path}")
         else:
             print("[LOG] 不启用量化")
             
-        batchSize = config.get("batchSize", 1)
-        if batchSize and batchSize > 1:
-            buildArgs["rknn_batch_size"] = batchSize
-            print(f"[LOG] 批次大小: {batchSize}")
+        batch_size = config.get("batch_size", 1)
+        if batch_size and batch_size > 1:
+            build_args["rknn_batch_size"] = batch_size
+            print(f"[LOG] 批次大小: {batch_size}")
             
         print("[LOG] 开始构建RKNN模型...")
-        ret = rknn.build(**buildArgs)
+        ret = rknn.build(**build_args)
         if ret != 0:
             print(f"[ERROR] 构建失败: ret={ret}")
             return False
         print("[LOG] 构建成功")
         
         # 导出RKNN
-        print(f"[LOG] 导出RKNN: {outputPath}")
-        ret = rknn.export_rknn(outputPath)
+        print(f"[LOG] 导出RKNN: {output_path}")
+        ret = rknn.export_rknn(output_path)
         if ret != 0:
             print(f"[ERROR] 导出RKNN失败: ret={ret}")
             return False
             
         # 获取文件大小
-        outputSize = Path(outputPath).stat().st_size / (1024 * 1024)
-        print(f"[SIZE] {outputSize:.2f}")
+        output_size = Path(output_path).stat().st_size / (1024 * 1024)
+        print(f"[SIZE] {output_size:.2f}")
         
         rknn.release()
         
-        print(f"[SUCCESS] {outputPath}")
+        print(f"[SUCCESS] {output_path}")
         return True
         
     except Exception as e:
@@ -201,8 +201,8 @@ def main():
     
     # 执行转换
     success = convert_onnx_to_rknn(
-        onnxPath=args.onnx,
-        outputPath=args.output,
+        onnx_path=args.onnx,
+        output_path=args.output,
         config=config
     )
     

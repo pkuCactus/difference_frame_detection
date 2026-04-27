@@ -109,7 +109,7 @@
             <div class="info-grid">
                 <div class="info-item">
                     <div class="info-label">任务ID</div>
-                    <div class="info-value">{{ task.taskId }}</div>
+                    <div class="info-value">{{ task.task_id }}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">目标平台</div>
@@ -117,11 +117,11 @@
                 </div>
                 <div class="info-item">
                     <div class="info-label">开始时间</div>
-                    <div class="info-value">{{ task.startTime.strftime('%H:%M:%S') }}</div>
+                    <div class="info-value">{{ task.start_time.strftime('%H:%M:%S') }}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">结束时间</div>
-                    <div class="info-value">{{ task.endTime.strftime('%H:%M:%S') if task.endTime else '-' }}</div>
+                    <div class="info-value">{{ task.end_time.strftime('%H:%M:%S') if task.end_time else '-' }}</div>
                 </div>
             </div>
             
@@ -134,7 +134,7 @@
             
             <div class="actions">
                 {% if task.status == 'completed' %}
-                <a href="/download/{{ task.taskId }}" class="btn success">📥 下载 RKNN 模型</a>
+                <a href="/download/{{ task.task_id }}" class="btn success">📥 下载 RKNN 模型</a>
                 {% endif %}
                 <a href="/" class="btn secondary">转换新模型</a>
             </div>
