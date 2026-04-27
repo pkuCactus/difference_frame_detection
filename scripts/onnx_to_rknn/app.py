@@ -651,9 +651,9 @@ class VirtualEnvManager:
             if returncode == 0:
                 print(f"✓ RKNN whl 安装成功")
                 
-                # 安装 setuptools（pkg_resources 是 setuptools 的一部分）
-                print(f"  -> 安装 setuptools...")
-                setuptools_cmd = install_cmd + ["setuptools"]
+                # 安装 setuptools<72（pkg_resources 在 72+ 版本被移除）
+                print(f"  -> 安装 setuptools<72（包含 pkg_resources）...")
+                setuptools_cmd = install_cmd + ["setuptools<72"]
                 setuptools_process = subprocess.Popen(
                     setuptools_cmd,
                     stdout=None,
