@@ -64,6 +64,7 @@ target_link_libraries(difference_detection PRIVATE
     ${OpenCV_LIBS}
     ${CURL_LIBRARIES}
     yaml-cpp
+    z
 )
 
 if(RK3566_PLATFORM)
