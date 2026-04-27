@@ -44,6 +44,10 @@ DATASET_DIR = BASE_DIR / "datasets"
 TMPDIR = Path(os.environ.get("TMPDIR", "/tmp"))
 VENV_DIR = TMPDIR / "onnx_to_rknn_venvs"
 
+# 清华镜像源（加速国内下载）
+TSINGHUA_PYPI_INDEX = "https://pypi.tuna.tsinghua.edu.cn/simple"
+TSINGHUA_PYTHON_MIRROR = "https://mirrors.tuna.tsinghua.edu.cn/python/"
+
 # 确保目录存在
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -297,14 +301,14 @@ class VirtualEnvManager:
         except Exception as e:
             print(f"  ✗ 脚本安装异常: {e}")
 
-        # 方法2: 通过 pip 安装
+        # 方法2: 通过 pip 安装（使用清华源）
         try:
-            print("  -> 尝试通过 pip 安装 uv...")
+            print("  -> 尝试通过 pip 安装 uv（清华源）...")
             pip_cmds = ["pip", "pip3", sys.executable + " -m pip"]
             for pip_cmd in pip_cmds:
                 parts = pip_cmd.split() if " " in pip_cmd else [pip_cmd]
                 result = subprocess.run(
-                    parts + ["install", "uv"],
+                    parts + ["install", "uv", "-i", TSINGHUA_PYPI_INDEX],
                     capture_output=True, text=True, timeout=120
                 )
                 if result.returncode == 0:
@@ -338,11 +342,11 @@ class VirtualEnvManager:
             except Exception:
                 pass
 
-        # 使用 uv 安装（实时输出进度）
+        # 使用 uv 安装（实时输出进度，使用清华镜像）
         try:
-            print(f"  -> 使用 uv 安装 {py_version}...")
+            print(f"  -> 使用 uv 安装 {py_version}（清华镜像）...")
             process = subprocess.Popen(
-                [uv_path, "python", "install", py_version],
+                [uv_path, "python", "install", py_version, "--mirror", TSINGHUA_PYTHON_MIRROR],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -563,18 +567,18 @@ class VirtualEnvManager:
             return False, f"创建失败: {str(e)}"
 
     def _build_install_cmd(self, toolkit_type: str) -> tuple[list[str], str]:
-        """构建安装命令，优先使用 uv pip，回退到标准 pip"""
+        """构建安装命令，优先使用 uv pip（清华源），回退到标准 pip"""
         uv_path = self._get_uv_path()
         python_path = self._get_python_path(toolkit_type)
         pip_path = self._get_pip_path(toolkit_type)
 
         if uv_path:
-            return [uv_path, "pip", "install", "--python", str(python_path)], "uv"
+            return [uv_path, "pip", "install", "--python", str(python_path), "-i", TSINGHUA_PYPI_INDEX], "uv"
 
         use_pip_module = not pip_path.exists()
         if use_pip_module:
-            return [str(python_path), "-m", "pip", "install"], "pip"
-        return [str(pip_path), "install"], "pip"
+            return [str(python_path), "-m", "pip", "install", "-i", TSINGHUA_PYPI_INDEX], "pip"
+        return [str(pip_path), "install", "-i", TSINGHUA_PYPI_INDEX], "pip"
 
     def install_rknn(self, toolkit_type: str) -> tuple[bool, str]:
         """在虚拟环境中安装rknn-toolkit（优先使用 uv pip）"""
@@ -618,23 +622,36 @@ class VirtualEnvManager:
 
             print(f"安装本地 whl: {downloaded_whl.name}")
             print(" ".join(install_cmd) + f" {str(downloaded_whl)}")
-            result = subprocess.run(
+            
+            process = subprocess.Popen(
                 install_cmd + [str(downloaded_whl)],
-                capture_output=True, text=True, timeout=3600
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
             )
 
-            if result.returncode == 0:
-                lines = [l.strip() for l in result.stdout.strip().split('\n') if l.strip()]
-                if lines:
-                    for line in lines[-3:]:
-                        print(f"  {line[:200]}")
+            if process.stdout:
+                for line in process.stdout:
+                    line = line.rstrip("\n")
+                    if line:
+                        print(f"  {line}")
+
+            try:
+                returncode = process.wait(timeout=3600)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+                print(f"✗ 安装超时")
+                return False, "安装超时"
+
+            if returncode == 0:
                 print(f"✓ 安装成功")
                 self._check_all_envs()
                 return True, "安装成功"
             else:
-                err = result.stderr.strip()[:400] if result.stderr else "未知错误"
-                print(f"✗ 安装失败: {err}")
-                return False, "安装失败"
+                print(f"✗ 安装失败 (返回码: {returncode})")
+                return False, f"安装失败 (返回码: {returncode})"
 
         except subprocess.TimeoutExpired as e:
             print(f"✗ 安装超时: {e}")
@@ -1692,18 +1709,18 @@ if __name__ == "__main__":
     parser.add_argument("--skip-init-env", action="store_true",
                         help="跳过虚拟环境初始化检查")
     args = parser.parse_args()
-    
+
     if args.skip_init_env:
         print("跳过环境初始化...")
         init_results = {}
     else:
         init_results = init_virtual_environments()
-    
+
     print()
     print("ONNX转RKNN Web转换工具")
     print(f"访问: http://localhost:5000")
     print("=" * 70)
-    
+
     debug_mode = os.environ.get("FLASK_DEBUG", "false").lower() in ("1", "true", "yes")
     # 默认仅监听本机回环，避免局域网未授权访问；如需对外开放请显式设置 FLASK_HOST=0.0.0.0
     host = os.environ.get("FLASK_HOST", "127.0.0.1")
