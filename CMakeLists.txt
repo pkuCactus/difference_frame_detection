@@ -75,7 +75,21 @@ target_link_libraries(difference_detection PRIVATE
 )
 
 if(RK3566_PLATFORM)
-    EnsureSubmodule(third-party/rknn-sdk)
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/third-party/rknn-sdk")
+        message(STATUS "Attempting to initialize rknn-sdk submodule...")
+        execute_process(
+            COMMAND git submodule update --init -- third-party/rknn-sdk
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            RESULT_VARIABLE result
+            OUTPUT_VARIABLE output
+            ERROR_VARIABLE error
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_STRIP_TRAILING_WHITESPACE
+        )
+        if(NOT result EQUAL 0)
+            message(WARNING "Failed to initialize rknn-sdk submodule:\n${error}")
+        endif()
+    endif()
 
     set(RKNN_SDK_PATH "${CMAKE_SOURCE_DIR}/third-party/rknn-sdk" CACHE PATH "Path to RKNN SDK")
 
