@@ -19,7 +19,7 @@
 
 采用 **git submodule + add_subdirectory / ExternalProject 混合方案**：
 - yaml-cpp、GoogleTest 结构简单，直接 `add_subdirectory` 嵌入编译
-- OpenCV 模块多、target 多，使用 `ExternalProject_Add` 在独立目录编译，避免污染主项目
+- OpenCV 模块多、target 多，使用 `ExternalProject_Add`（仅指定 `SOURCE_DIR` 指向 submodule 目录，不配置 `GIT_REPOSITORY`，避免与 submodule 双重管理冲突）在独立目录编译，避免污染主项目
 - NDK、RKNN SDK 纯工具链/库，无需编译，初始化后配置路径即可
 
 ## 目录结构
@@ -57,6 +57,8 @@ cmake/
     path = third-party/rknn-sdk
     url = https://github.com/rockchip-linux/rknpu2.git
 ```
+
+> **版本锁定说明**：git submodule 本身会记录一个具体的 commit hash。开发者初始化 submodule 后，需进入各 submodule 目录 `git checkout <稳定tag>`，然后在主仓库提交锁定。`.gitmodules` 中的 `branch` 字段仅作为参考，实际构建使用的是 `.git` 中记录的 commit。OpenCV 建议锁定到 `4.9.0` 或更高稳定 tag。
 
 ## CMake 依赖管理架构
 
@@ -106,7 +108,7 @@ endfunction()
 - **构建目录**：`${CMAKE_BINARY_DIR}/third-party/opencv-build`
 - **安装目录**：`${CMAKE_BINARY_DIR}/third-party/opencv-install`
 - **启用模块**：`core,imgproc,video,imgcodecs`（通过 `-DBUILD_LIST`）
-- **关闭项**：examples、perf_tests、tests、python bindings、GTK、QT、Eigen、OpenCL、CUDA、FFmpeg、V4L
+- **关闭项**：examples、perf_tests、tests、python bindings、GTK、QT、Eigen、OpenCL、CUDA、FFmpeg、V4L、PNG、JPEG、TIFF、WebP、OpenEXR、OpenJPEG
 - **输出**：静态库 `.a` 文件
 - **BUILD_BYPRODUCTS**：显式声明所有生成的静态库，满足 Ninja 生成器要求：
   - `libopencv_core.a`
@@ -127,7 +129,7 @@ endfunction()
 5. RKNN SDK 头文件路径：`${RKNN_SDK_PATH}/runtime/Android/rknn_api/include`
 6. RKNN 库路径：`${RKNN_SDK_PATH}/runtime/Android/rknn_api/arm64-v8a/librknn_api.so`
 
-> 工具链文件需在 `project()` 之前生效，推荐通过 `cmake -DCMAKE_TOOLCHAIN_FILE=...` 传入，或在 CMakeLists.txt 顶部提前检测并设置。
+> **工具链文件设置时机**：`CMAKE_TOOLCHAIN_FILE` 需在 `project()` 之前生效。推荐做法：在 CMakeLists.txt 的 `project()` 调用之前，检测 `RK3566_PLATFORM`（通过命令行 `-DRK3566_PLATFORM=ON` 传入），若未找到 NDK 工具链文件，先用 `execute_process` 初始化 `third-party/android-ndk` submodule，然后设置 `CMAKE_TOOLCHAIN_FILE` 变量。这样可在一个 cmake 命令中完成 NDK 初始化和交叉编译配置。
 
 ## 测试策略
 
@@ -137,7 +139,7 @@ endfunction()
 2. **主程序编译通过**：`cmake --build build` 生成 `difference_detection` 可执行文件
 3. **测试编译通过**：`cmake -B build -DBUILD_TESTS=ON` 成功编译 `difference_detection_tests`
 4. **RK3566 配置通过**：`cmake -B build -DRK3566_PLATFORM=ON` 正确识别 NDK 和 RKNN SDK 路径
-5. **消除硬编码路径验证**：在新干净环境中（无 conda 路径）也能编译通过
+5. **消除硬编码路径验证**：在 `grep -r "jianzhong/miniconda3" CMakeLists.txt tests/ cmake/` 无匹配的前提下，编译成功即通过
 
 ## 风险与缓解
 
