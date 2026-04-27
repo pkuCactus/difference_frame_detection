@@ -1,4 +1,8 @@
 cmake_minimum_required(VERSION 3.14)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(FetchDeps)
+
 project(difference_detection VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -15,11 +19,14 @@ else()
     message(STATUS "Building with stub mode (non-RK3566 platform)")
 endif()
 
-find_package(OpenCV REQUIRED)
-find_package(CURL REQUIRED)
+# 初始化核心依赖
+EnsureSubmodule(third-party/opencv)
+EnsureSubmodule(third-party/yaml-cpp)
 
-set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};/home/jianzhong/miniconda3/lib/cmake/yaml-cpp")
-find_package(yaml-cpp REQUIRED)
+# 引入 yaml-cpp
+add_subdirectory(third-party/yaml-cpp)
+
+find_package(CURL REQUIRED)
 
 set(SOURCES
     src/common/config.cpp
@@ -48,13 +55,12 @@ target_include_directories(difference_detection PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${OpenCV_INCLUDE_DIRS}
     ${CURL_INCLUDE_DIRS}
-    /home/jianzhong/miniconda3/include
 )
 
 target_link_libraries(difference_detection PRIVATE
     ${OpenCV_LIBS}
     ${CURL_LIBRARIES}
-    /home/jianzhong/miniconda3/lib/libyaml-cpp.so
+    yaml-cpp
 )
 
 if(RK3566_PLATFORM)
