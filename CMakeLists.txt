@@ -52,7 +52,17 @@ EnsureSubmodule(third-party/yaml-cpp)
 add_subdirectory(third-party/yaml-cpp)
 
 include(BuildOpenCV)
-include(BuildCURL)
+
+# CURL：本地编译用系统库，交叉编译时自己编译
+if(CMAKE_TOOLCHAIN_FILE)
+    # 交叉编译：需要自己编译 curl
+    include(BuildCURL)
+    set(CURL_EXTERNAL_DEPS curl_external)
+else()
+    # 本地编译：使用系统 curl
+    find_package(CURL REQUIRED)
+    set(CURL_EXTERNAL_DEPS "")
+endif()
 
 set(SOURCES
     src/common/config.cpp
@@ -76,7 +86,7 @@ set(SOURCES
 )
 
 add_executable(difference_detection src/main.cpp ${SOURCES})
-add_dependencies(difference_detection opencv_external curl_external)
+add_dependencies(difference_detection opencv_external ${CURL_EXTERNAL_DEPS})
 
 target_include_directories(difference_detection PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src

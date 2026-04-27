@@ -37,7 +37,7 @@ set(TEST_SOURCES
 
 add_executable(difference_detection_tests ${TEST_SOURCES})
 
-add_dependencies(difference_detection_tests opencv_external curl_external)
+add_dependencies(difference_detection_tests opencv_external ${CURL_EXTERNAL_DEPS})
 
 target_include_directories(difference_detection_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/src
