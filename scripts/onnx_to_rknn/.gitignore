@@ -1,2 +1,6 @@
 *.onnx
 whl_files/
+.pytest_cache/
+datasets/
+outputs/
+uploads/

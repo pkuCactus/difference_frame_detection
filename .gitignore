@@ -80,3 +80,7 @@ Testing/
 /tmp/difference_detection*
 
 __pycache__/
+
+# NDK downloads
+third-party/*.zip
+third-party/android-ndk-*/

@@ -1,5 +1,5 @@
-set(ANDROID_NDK_VERSION "r21e")
-set(ANDROID_NDK_ZIP_NAME "android-ndk-${ANDROID_NDK_VERSION}-linux-x86_64.zip")
+set(ANDROID_NDK_VERSION "r27d")
+set(ANDROID_NDK_ZIP_NAME "android-ndk-${ANDROID_NDK_VERSION}-linux.zip")
 set(ANDROID_NDK_URL "https://dl.google.com/android/repository/${ANDROID_NDK_ZIP_NAME}")
 if(NOT ANDROID_NDK_DOWNLOAD_DIR)
     set(ANDROID_NDK_DOWNLOAD_DIR "${CMAKE_SOURCE_DIR}/third-party")
