@@ -26,6 +26,8 @@ EnsureSubmodule(third-party/yaml-cpp)
 # 引入 yaml-cpp
 add_subdirectory(third-party/yaml-cpp)
 
+include(BuildOpenCV)
+
 find_package(CURL REQUIRED)
 
 set(SOURCES
@@ -50,6 +52,7 @@ set(SOURCES
 )
 
 add_executable(difference_detection src/main.cpp ${SOURCES})
+add_dependencies(difference_detection opencv_external)
 
 target_include_directories(difference_detection PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
