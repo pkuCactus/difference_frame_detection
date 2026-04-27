@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
 find_package(GTest REQUIRED)
-find_package(CURL REQUIRED)
 
 set(TEST_SOURCES
     test_config.cpp
@@ -38,7 +37,7 @@ set(TEST_SOURCES
 
 add_executable(difference_detection_tests ${TEST_SOURCES})
 
-add_dependencies(difference_detection_tests opencv_external)
+add_dependencies(difference_detection_tests opencv_external curl_external)
 
 target_include_directories(difference_detection_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/src
@@ -51,6 +50,7 @@ target_link_libraries(difference_detection_tests PRIVATE
     ${CURL_LIBRARIES}
     yaml-cpp
     z
+    pthread
     GTest::gtest
     GTest::gtest_main
 )

@@ -34,8 +34,7 @@ EnsureSubmodule(third-party/yaml-cpp)
 add_subdirectory(third-party/yaml-cpp)
 
 include(BuildOpenCV)
-
-find_package(CURL REQUIRED)
+include(BuildCURL)
 
 set(SOURCES
     src/common/config.cpp
@@ -59,7 +58,7 @@ set(SOURCES
 )
 
 add_executable(difference_detection src/main.cpp ${SOURCES})
-add_dependencies(difference_detection opencv_external)
+add_dependencies(difference_detection opencv_external curl_external)
 
 target_include_directories(difference_detection PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -72,6 +71,7 @@ target_link_libraries(difference_detection PRIVATE
     ${CURL_LIBRARIES}
     yaml-cpp
     z
+    pthread
 )
 
 if(RK3566_PLATFORM)
