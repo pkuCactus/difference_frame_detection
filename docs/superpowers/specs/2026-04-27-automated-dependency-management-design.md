@@ -37,7 +37,7 @@ cmake/
 └── DownloadNDK.cmake    # NDK 自动下载与解压
 
 # NDK 下载到构建目录外（体积大，不放入源码树）
-# 默认路径: $ENV{HOME}/.local/android-ndk-r25c
+# 默认路径: ${CMAKE_BINARY_DIR}/android-ndk (随构建目录清理)
 ```
 
 ## git submodule 配置
@@ -90,7 +90,8 @@ endfunction()
 4. `add_subdirectory(third-party/yaml-cpp)`
 5. `include(BuildOpenCV)`
 6. `if(BUILD_TESTS)` → `EnsureSubmodule(third-party/googletest)` → `add_subdirectory(third-party/googletest)`
-7. `if(RK3566_PLATFORM)` → 下载 NDK、初始化 RKNN SDK submodule，配置工具链和库路径
+7. `project()` 之前：若 `RK3566_PLATFORM=ON`，先下载 NDK 并设置 `CMAKE_TOOLCHAIN_FILE`
+8. `project()` 之后：`if(RK3566_PLATFORM)` → 初始化 RKNN SDK submodule，配置 RKNN 头文件和库路径
 
 ### 移除的硬编码路径
 
@@ -110,7 +111,7 @@ endfunction()
 - **启用模块**：`core,imgproc,video,imgcodecs`（通过 `-DBUILD_LIST`）
 - **关闭项**：examples、perf_tests、tests、python bindings、GTK、QT、Eigen、OpenCL、CUDA、FFmpeg、V4L、PNG、JPEG、TIFF、WebP、OpenEXR、OpenJPEG
 - **输出**：静态库 `.a` 文件
-- **BUILD_BYPRODUCTS**：显式声明安装标记文件 `${OPENCV_INSTALL_DIR}/lib/cmake/opencv4/OpenCVConfig.cmake`，满足 Ninja 生成器要求。该文件在所有模块和第三方依赖编译安装完成后生成，避免枚举所有中间 `.a` 文件
+- **BUILD_BYPRODUCTS**：显式声明安装标记文件 `${CMAKE_BINARY_DIR}/third-party/opencv-install/lib/cmake/opencv4/OpenCVConfig.cmake`，满足 Ninja 生成器要求。该文件在所有模块和第三方依赖编译安装完成后生成，避免枚举所有中间 `.a` 文件
 
 编译时间预计从 30 分钟降至 3~5 分钟。
 
@@ -118,7 +119,7 @@ endfunction()
 
 当 `RK3566_PLATFORM=ON`：
 
-1. **NDK 下载**：通过 `cmake/DownloadNDK.cmake` 使用 `file(DOWNLOAD ...)` 从 Google 官方镜像下载 Android NDK 的 Linux x86_64 tar.gz（如 `android-ndk-r25c-linux-x86_64.zip`），使用 `EXPECTED_HASH` 校验完整性，解压到 `${CMAKE_BINARY_DIR}/android-ndk` 或 `$ENV{HOME}/.local/android-ndk-r25c`
+1. **NDK 下载**：通过 `cmake/DownloadNDK.cmake` 使用 `file(DOWNLOAD ...)` 从 Google 官方镜像下载 Android NDK 的 Linux x86_64 tar.gz（如 `android-ndk-r25c-linux-x86_64.zip`），使用 `EXPECTED_HASH` 校验完整性，解压到 `${CMAKE_BINARY_DIR}/android-ndk`
 2. 初始化 `third-party/rknn-sdk` submodule
 3. 设置 Android ABI（默认 `arm64-v8a`，RK3566 为 Cortex-A55 64 位核心）
 4. 设置 `ANDROID_NATIVE_API_LEVEL=21`
@@ -138,7 +139,7 @@ endfunction()
 2. **主程序编译通过**：`cmake --build build` 生成 `difference_detection` 可执行文件
 3. **测试编译通过**：`cmake -B build -DBUILD_TESTS=ON` 成功编译 `difference_detection_tests`
 4. **RK3566 配置通过**：`cmake -B build -DRK3566_PLATFORM=ON` 正确下载 NDK、识别 RKNN SDK 路径
-5. **消除硬编码路径验证**：在 `grep -r "jianzhong/miniconda3" CMakeLists.txt tests/ cmake/` 无匹配的前提下，编译成功即通过
+5. **消除硬编码路径验证**：在 `grep -r "jianzhong/miniconda3" . --include="*.cmake" --include="CMakeLists.txt" --include="*.cpp" --include="*.h"` 无匹配的前提下，编译成功即通过
 
 ## 风险与缓解
 
