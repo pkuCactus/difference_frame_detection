@@ -108,7 +108,11 @@ endfunction()
 - **启用模块**：`core,imgproc,video,imgcodecs`（通过 `-DBUILD_LIST`）
 - **关闭项**：examples、perf_tests、tests、python bindings、GTK、QT、Eigen、OpenCL、CUDA、FFmpeg、V4L
 - **输出**：静态库 `.a` 文件
-- **BUILD_BYPRODUCTS**：显式声明 `libopencv_core.a`，满足 Ninja 生成器要求
+- **BUILD_BYPRODUCTS**：显式声明所有生成的静态库，满足 Ninja 生成器要求：
+  - `libopencv_core.a`
+  - `libopencv_imgproc.a`
+  - `libopencv_video.a`
+  - `libopencv_imgcodecs.a`
 
 编译时间预计从 30 分钟降至 3~5 分钟。
 
@@ -117,11 +121,11 @@ endfunction()
 当 `RK3566_PLATFORM=ON`：
 
 1. 初始化 `third-party/android-ndk` 和 `third-party/rknn-sdk`
-2. 设置 Android ABI（默认 `armeabi-v7a`，可配置）
+2. 设置 Android ABI（默认 `arm64-v8a`，RK3566 为 Cortex-A55 64 位核心）
 3. 设置 `ANDROID_NATIVE_API_LEVEL=21`
 4. `CMAKE_TOOLCHAIN_FILE` 指向 NDK 内置的 `android.toolchain.cmake`
 5. RKNN SDK 头文件路径：`${RKNN_SDK_PATH}/runtime/Android/rknn_api/include`
-6. RKNN 库路径：`${RKNN_SDK_PATH}/runtime/Android/rknn_api/${ANDROID_ABI}/librknn_api.so`
+6. RKNN 库路径：`${RKNN_SDK_PATH}/runtime/Android/rknn_api/arm64-v8a/librknn_api.so`
 
 > 工具链文件需在 `project()` 之前生效，推荐通过 `cmake -DCMAKE_TOOLCHAIN_FILE=...` 传入，或在 CMakeLists.txt 顶部提前检测并设置。
 
@@ -140,6 +144,7 @@ endfunction()
 | 风险 | 缓解措施 |
 |------|----------|
 | OpenCV 首次编译仍耗时数分钟 | 仅启用必要模块，已最大程度裁剪；后续编译复用 build 缓存 |
-| NDK 体积大（1~4GB），clone 慢 | 仅在 `RK3566_PLATFORM=ON` 时初始化，不影响默认编译 |
+| NDK 体积大（1~4GB），clone 慢 | `EnsureSubmodule` 执行 `git submodule update --init third-party/xxx`，仅初始化指定 submodule，不会下载全部；默认编译不触发 NDK 下载 |
 | submodule 仓库网络不可达 | `execute_process` 失败时给出明确错误信息；支持预先手动 clone |
 | RKNN SDK 仓库结构变化 | 使用相对路径配置，若结构变化需适配；文档中记录验证的版本 |
+| 上游依赖版本不兼容 | 所有 submodule 固定到具体 commit/tag，不跟踪分支最新；OpenCV 锁定在 4.x 的某个稳定 tag |
