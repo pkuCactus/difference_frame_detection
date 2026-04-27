@@ -1,4 +1,19 @@
 cmake_minimum_required(VERSION 3.14)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(FetchDeps)
+
+option(RK3566_PLATFORM "Build for RK3566 platform with RKNN SDK" OFF)
+
+if(RK3566_PLATFORM)
+    if(NOT CMAKE_TOOLCHAIN_FILE)
+        include(DownloadNDK)
+    endif()
+    message(STATUS "Building for RK3566 platform with RKNN SDK")
+else()
+    message(STATUS "Building with stub mode (non-RK3566 platform)")
+endif()
+
 project(difference_detection VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -6,20 +21,21 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_TESTS "Build unit tests" ON)
-option(RK3566_PLATFORM "Build for RK3566 platform with RKNN SDK" OFF)
 
 if(RK3566_PLATFORM)
     add_definitions(-DRK3566_PLATFORM)
-    message(STATUS "Building for RK3566 platform with RKNN SDK")
-else()
-    message(STATUS "Building with stub mode (non-RK3566 platform)")
 endif()
 
-find_package(OpenCV REQUIRED)
-find_package(CURL REQUIRED)
+# 初始化核心依赖
+EnsureSubmodule(third-party/opencv)
+EnsureSubmodule(third-party/yaml-cpp)
 
-set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};/home/jianzhong/miniconda3/lib/cmake/yaml-cpp")
-find_package(yaml-cpp REQUIRED)
+# 引入 yaml-cpp
+add_subdirectory(third-party/yaml-cpp)
+
+include(BuildOpenCV)
+
+find_package(CURL REQUIRED)
 
 set(SOURCES
     src/common/config.cpp
@@ -43,22 +59,58 @@ set(SOURCES
 )
 
 add_executable(difference_detection src/main.cpp ${SOURCES})
+add_dependencies(difference_detection opencv_external)
 
 target_include_directories(difference_detection PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${OpenCV_INCLUDE_DIRS}
     ${CURL_INCLUDE_DIRS}
-    /home/jianzhong/miniconda3/include
 )
 
 target_link_libraries(difference_detection PRIVATE
     ${OpenCV_LIBS}
     ${CURL_LIBRARIES}
-    /home/jianzhong/miniconda3/lib/libyaml-cpp.so
+    yaml-cpp
+    z
 )
 
 if(RK3566_PLATFORM)
-    find_library(RKNN_LIBRARY rknn_api HINTS /usr/lib /lib)
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/third-party/rknn-sdk")
+        message(STATUS "Attempting to initialize rknn-sdk submodule...")
+        execute_process(
+            COMMAND git submodule update --init -- third-party/rknn-sdk
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            RESULT_VARIABLE result
+            OUTPUT_VARIABLE output
+            ERROR_VARIABLE error
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_STRIP_TRAILING_WHITESPACE
+        )
+        if(NOT result EQUAL 0)
+            message(WARNING "Failed to initialize rknn-sdk submodule:\n${error}")
+        endif()
+    endif()
+
+    set(RKNN_SDK_PATH "${CMAKE_SOURCE_DIR}/third-party/rknn-sdk" CACHE PATH "Path to RKNN SDK")
+
+    find_path(RKNN_INCLUDE_DIR rknn_api.h
+        HINTS "${RKNN_SDK_PATH}/rknn_runtime/include"
+              "${RKNN_SDK_PATH}/runtime/include"
+              "${RKNN_SDK_PATH}/include"
+    )
+
+    find_library(RKNN_LIBRARY rknn_api
+        HINTS "${RKNN_SDK_PATH}/rknn_runtime/lib/linux/arm64"
+              "${RKNN_SDK_PATH}/runtime/lib/linux/arm64"
+              "${RKNN_SDK_PATH}/lib"
+              /usr/lib /lib
+    )
+
+    if(RKNN_INCLUDE_DIR)
+        target_include_directories(difference_detection PRIVATE ${RKNN_INCLUDE_DIR})
+        message(STATUS "Found RKNN include dir: ${RKNN_INCLUDE_DIR}")
+    endif()
+
     if(RKNN_LIBRARY)
         target_link_libraries(difference_detection PRIVATE ${RKNN_LIBRARY})
         message(STATUS "Found RKNN library: ${RKNN_LIBRARY}")
@@ -69,5 +121,18 @@ endif()
 
 if(BUILD_TESTS)
     enable_testing()
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/third-party/googletest/CMakeLists.txt")
+        message(STATUS "googletest submodule not present, attempting to initialize...")
+        execute_process(
+            COMMAND git submodule update --init -- third-party/googletest
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            RESULT_VARIABLE result
+        )
+    endif()
+    if(EXISTS "${CMAKE_SOURCE_DIR}/third-party/googletest/CMakeLists.txt")
+        add_subdirectory(third-party/googletest)
+    else()
+        find_package(GTest REQUIRED)
+    endif()
     add_subdirectory(tests)
 endif()

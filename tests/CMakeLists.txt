@@ -38,17 +38,19 @@ set(TEST_SOURCES
 
 add_executable(difference_detection_tests ${TEST_SOURCES})
 
+add_dependencies(difference_detection_tests opencv_external)
+
 target_include_directories(difference_detection_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${OpenCV_INCLUDE_DIRS}
     ${CURL_INCLUDE_DIRS}
-    /home/jianzhong/miniconda3/include
 )
 
 target_link_libraries(difference_detection_tests PRIVATE
     ${OpenCV_LIBS}
     ${CURL_LIBRARIES}
-    /home/jianzhong/miniconda3/lib/libyaml-cpp.so
+    yaml-cpp
+    z
     GTest::gtest
     GTest::gtest_main
 )
