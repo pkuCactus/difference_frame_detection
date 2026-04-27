@@ -17,6 +17,7 @@ ONNX转RKNN Web转换工具
     访问 http://localhost:5000
 """
 
+import argparse
 import json
 import os
 import shutil
@@ -1615,7 +1616,7 @@ def init_virtual_environments():
     results = {}
     for toolkit_type, info in TOOLKIT_VENV_MAP.items():
         print(f"\n[{toolkit_type}]")
-        print(f"  虚拟环境: {info['venvName']}")
+        print(f"  虚拟环境: {info['venv_name']}")
         print(f"  包名: {info['package_name']}")
 
         status = venv_manager.get_status(toolkit_type)
@@ -1648,7 +1649,7 @@ def _check_env_status_only() -> dict:
     results = {}
     for toolkit_type, info in TOOLKIT_VENV_MAP.items():
         print(f"\n[{toolkit_type}]")
-        print(f"  虚拟环境: {info['venvName']}")
+        print(f"  虚拟环境: {info['venv_name']}")
         print(f"  包名: {info['package_name']}")
 
         status = venv_manager.get_status(toolkit_type)
@@ -1687,14 +1688,22 @@ def _check_env_status_only() -> dict:
 
 
 if __name__ == "__main__":
-    # 启动时只检查状态，不自动安装
-    init_results = init_virtual_environments()
-
+    parser = argparse.ArgumentParser(description="ONNX转RKNN Web转换工具")
+    parser.add_argument("--skip-init-env", action="store_true",
+                        help="跳过虚拟环境初始化检查")
+    args = parser.parse_args()
+    
+    if args.skip_init_env:
+        print("跳过环境初始化...")
+        init_results = {}
+    else:
+        init_results = init_virtual_environments()
+    
     print()
     print("ONNX转RKNN Web转换工具")
     print(f"访问: http://localhost:5000")
     print("=" * 70)
-
+    
     debug_mode = os.environ.get("FLASK_DEBUG", "false").lower() in ("1", "true", "yes")
     # 默认仅监听本机回环，避免局域网未授权访问；如需对外开放请显式设置 FLASK_HOST=0.0.0.0
     host = os.environ.get("FLASK_HOST", "127.0.0.1")

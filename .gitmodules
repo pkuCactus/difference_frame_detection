@@ -1,0 +1,12 @@
+[submodule "third-party/googletest"]
+	path = third-party/googletest
+	url = https://github.com/google/googletest.git
+[submodule "third-party/rknn-sdk"]
+	path = third-party/rknn-sdk
+	url = https://github.com/airockchip/rknn-toolkit2.git
+[submodule "third-party/opencv"]
+	path = third-party/opencv
+	url = https://github.com/opencv/opencv.git
+[submodule "third-party/yaml-cpp"]
+	path = third-party/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp.git
