@@ -11,9 +11,3 @@
 [submodule "third-party/rknn-sdk"]
 	path = third-party/rknn-sdk
 	url = https://github.com/airockchip/rknn-toolkit2.git
-[submodule "third-party/googletest"]
-	path = third-party/googletest
-	url = https://github.com/google/googletest.git
-[submodule "third-party/rknn-sdk"]
-	path = third-party/rknn-sdk
-	url = https://github.com/airockchip/rknn-toolkit2.git
