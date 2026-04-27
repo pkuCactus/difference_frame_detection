@@ -5,7 +5,7 @@ set(OPENCV_BUILD_DIR "${CMAKE_BINARY_DIR}/third-party/opencv-build")
 set(OPENCV_INSTALL_DIR "${CMAKE_BINARY_DIR}/third-party/opencv-install")
 
 set(OPENCV_BUILD_OPTIONS
-    -DBUILD_LIST=core,imgproc,video,videoio,imgcodecs
+    -DBUILD_LIST=core,imgproc,video,videoio,imgcodecs,highgui
     -DBUILD_SHARED_LIBS=OFF
     -DBUILD_EXAMPLES=OFF
     -DBUILD_PERF_TESTS=OFF
@@ -49,6 +49,7 @@ ExternalProject_Add(opencv_external
         ${OPENCV_INSTALL_DIR}/lib/libopencv_video.a
         ${OPENCV_INSTALL_DIR}/lib/libopencv_videoio.a
         ${OPENCV_INSTALL_DIR}/lib/libopencv_imgcodecs.a
+        ${OPENCV_INSTALL_DIR}/lib/libopencv_highgui.a
     INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
 )
 
@@ -56,6 +57,7 @@ set(OpenCV_DIR ${OPENCV_INSTALL_DIR}/lib/cmake/opencv4 CACHE PATH "" FORCE)
 set(OpenCV_INCLUDE_DIRS ${OPENCV_INSTALL_DIR}/include/opencv4)
 
 set(OpenCV_LIBS
+    ${OPENCV_INSTALL_DIR}/lib/libopencv_highgui.a
     ${OPENCV_INSTALL_DIR}/lib/libopencv_imgcodecs.a
     ${OPENCV_INSTALL_DIR}/lib/libopencv_videoio.a
     ${OPENCV_INSTALL_DIR}/lib/libopencv_video.a
