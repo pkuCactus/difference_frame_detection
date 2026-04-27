@@ -42,6 +42,24 @@ foreach(binDir ${NDK_PREBUILT_BIN_DIRS})
     endif()
 endforeach()
 
+# 验证文件系统是否支持可执行权限
+set(NDK_CLANG_PATH "${ANDROID_NDK_DIR}/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++")
+if(EXISTS "${NDK_CLANG_PATH}")
+    execute_process(
+        COMMAND test -x "${NDK_CLANG_PATH}"
+        RESULT_VARIABLE test_exec_result
+    )
+    if(NOT test_exec_result EQUAL 0)
+        message(FATAL_ERROR
+            "NDK 工具链没有可执行权限，当前文件系统可能不支持 Unix 执行权限（例如 NTFS/exFAT）。\n"
+            "请设置 ANDROID_NDK_DOWNLOAD_DIR 到一个支持 Unix 权限的目录，例如:\n"
+            "  cmake -DANDROID_NDK_DOWNLOAD_DIR=/tmp/difference_detection-ndk ...\n"
+            "或者手动指定已安装的 NDK:\n"
+            "  cmake -DCMAKE_TOOLCHAIN_FILE=/path/to/ndk/build/cmake/android.toolchain.cmake ..."
+        )
+    endif()
+endif()
+
 set(CMAKE_TOOLCHAIN_FILE "${ANDROID_NDK_DIR}/build/cmake/android.toolchain.cmake" CACHE FILEPATH "" FORCE)
 
 if(NOT ANDROID_ABI)
