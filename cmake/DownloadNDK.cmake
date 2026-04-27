@@ -1,7 +1,9 @@
 set(ANDROID_NDK_VERSION "r21e")
 set(ANDROID_NDK_ZIP_NAME "android-ndk-${ANDROID_NDK_VERSION}-linux-x86_64.zip")
 set(ANDROID_NDK_URL "https://dl.google.com/android/repository/${ANDROID_NDK_ZIP_NAME}")
-set(ANDROID_NDK_DOWNLOAD_DIR "${CMAKE_SOURCE_DIR}/third-party")
+if(NOT ANDROID_NDK_DOWNLOAD_DIR)
+    set(ANDROID_NDK_DOWNLOAD_DIR "${CMAKE_SOURCE_DIR}/third-party")
+endif()
 set(ANDROID_NDK_ZIP_PATH "${ANDROID_NDK_DOWNLOAD_DIR}/${ANDROID_NDK_ZIP_NAME}")
 set(ANDROID_NDK_DIR "${ANDROID_NDK_DOWNLOAD_DIR}/android-ndk-${ANDROID_NDK_VERSION}")
 
@@ -61,6 +63,15 @@ if(EXISTS "${NDK_CLANG_PATH}")
 endif()
 
 set(CMAKE_TOOLCHAIN_FILE "${ANDROID_NDK_DIR}/build/cmake/android.toolchain.cmake" CACHE FILEPATH "" FORCE)
+
+# 将 NDK 工具链目录加入 PATH，确保 clang++ 能找到 ld.lld 等工具
+set(NDK_TOOLCHAIN_BIN "${ANDROID_NDK_DIR}/toolchains/llvm/prebuilt/linux-x86_64/bin")
+if(EXISTS "${NDK_TOOLCHAIN_BIN}")
+    set(ENV{PATH} "${NDK_TOOLCHAIN_BIN}:$ENV{PATH}")
+endif()
+
+# 强制使用 lld 链接器，避免 clang++ 回退到系统不兼容的 ld
+set(ANDROID_LD "lld" CACHE STRING "" FORCE)
 
 if(NOT ANDROID_ABI)
     set(ANDROID_ABI "arm64-v8a" CACHE STRING "" FORCE)
