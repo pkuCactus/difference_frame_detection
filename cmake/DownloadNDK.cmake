@@ -29,7 +29,6 @@ if(NOT EXISTS "${ANDROID_NDK_DIR}")
     if(NOT unzip_result EQUAL 0)
         message(FATAL_ERROR "Failed to extract Android NDK")
     endif()
-
 endif()
 
 # unzip 不保留可执行权限，需要确保 NDK 中编译器工具链具有执行权限
@@ -52,13 +51,28 @@ if(EXISTS "${NDK_CLANG_PATH}")
         RESULT_VARIABLE test_exec_result
     )
     if(NOT test_exec_result EQUAL 0)
-        message(FATAL_ERROR
-            "NDK 工具链没有可执行权限，当前文件系统可能不支持 Unix 执行权限（例如 NTFS/exFAT）。\n"
-            "请设置 ANDROID_NDK_DOWNLOAD_DIR 到一个支持 Unix 权限的目录，例如:\n"
-            "  cmake -DANDROID_NDK_DOWNLOAD_DIR=/tmp/difference_detection-ndk ...\n"
-            "或者手动指定已安装的 NDK:\n"
-            "  cmake -DCMAKE_TOOLCHAIN_FILE=/path/to/ndk/build/cmake/android.toolchain.cmake ..."
-        )
+        # 当前文件系统（如 NTFS/exFAT）不支持 Unix 执行权限，自动回退到 /tmp
+        set(ANDROID_NDK_TMP_DIR "/tmp/difference_detection-ndk")
+        set(ANDROID_NDK_TMP "${ANDROID_NDK_TMP_DIR}/android-ndk-${ANDROID_NDK_VERSION}")
+        if(NOT EXISTS "${ANDROID_NDK_TMP}")
+            message(STATUS "当前文件系统不支持可执行权限，自动复制 NDK 到 /tmp...")
+            file(MAKE_DIRECTORY "${ANDROID_NDK_TMP_DIR}")
+            execute_process(
+                COMMAND cp -r "${ANDROID_NDK_DIR}" "${ANDROID_NDK_TMP}"
+                RESULT_VARIABLE cp_result
+            )
+            if(NOT cp_result EQUAL 0)
+                message(FATAL_ERROR "复制 NDK 到 /tmp 失败")
+            endif()
+            file(GLOB TMP_BIN_DIRS "${ANDROID_NDK_TMP}/toolchains/*/prebuilt/*/bin")
+            foreach(binDir ${TMP_BIN_DIRS})
+                if(EXISTS "${binDir}")
+                    execute_process(COMMAND chmod -R +x "${binDir}")
+                endif()
+            endforeach()
+        endif()
+        set(ANDROID_NDK_DIR "${ANDROID_NDK_TMP}")
+        message(STATUS "使用 /tmp 下的 NDK: ${ANDROID_NDK_DIR}")
     endif()
 endif()
 
