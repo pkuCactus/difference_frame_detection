@@ -27,7 +27,20 @@ if(NOT EXISTS "${ANDROID_NDK_DIR}")
     if(NOT unzip_result EQUAL 0)
         message(FATAL_ERROR "Failed to extract Android NDK")
     endif()
+
 endif()
+
+# unzip 不保留可执行权限，需要确保 NDK 中编译器工具链具有执行权限
+file(GLOB NDK_PREBUILT_BIN_DIRS "${ANDROID_NDK_DIR}/toolchains/*/prebuilt/*/bin")
+foreach(binDir ${NDK_PREBUILT_BIN_DIRS})
+    if(EXISTS "${binDir}")
+        message(STATUS "Fixing executable permissions: ${binDir}")
+        execute_process(
+            COMMAND chmod -R +x "${binDir}"
+            RESULT_VARIABLE chmod_result
+        )
+    endif()
+endforeach()
 
 set(CMAKE_TOOLCHAIN_FILE "${ANDROID_NDK_DIR}/build/cmake/android.toolchain.cmake" CACHE FILEPATH "" FORCE)
 
