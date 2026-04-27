@@ -93,7 +93,7 @@ make -j$(nproc)
 
 ### RK3566 平台构建（真实 RKNN）
 
-在瑞芯微 RK3566 设备上开启 RKNN 支持：
+在瑞芯微 RK3566 设备上开启 RKNN 支持（**本地编译，非交叉编译**）：
 
 ```bash
 mkdir build && cd build
@@ -101,12 +101,23 @@ cmake -DRK3566_PLATFORM=ON ..
 make -j$(nproc)
 ```
 
+### Android 平台构建（交叉编译）
+
+使用 Android NDK 交叉编译：
+
+```bash
+mkdir build && cd build
+cmake -DANDROID_BUILD=ON ..
+make -j$(nproc)
+```
+
 ### 构建选项
 
 | 选项 | 默认值 | 说明 |
 |------|--------|------|
-| `BUILD_TESTS` | `ON` | 是否构建单元测试 |
-| `RK3566_PLATFORM` | `OFF` | 是否针对 RK3566 平台编译 |
+| `BUILD_TESTS` | `ON` | 是否构建单元测试（交叉编译时自动禁用） |
+| `RK3566_PLATFORM` | `OFF` | RK3566 设备本地编译（启用真实 RKNN） |
+| `ANDROID_BUILD` | `OFF` | Android 交叉编译（使用 NDK） |
 
 ### 运行测试
 

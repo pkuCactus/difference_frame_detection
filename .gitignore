@@ -84,3 +84,7 @@ __pycache__/
 # NDK downloads
 third-party/*.zip
 third-party/android-ndk-*/
+
+# curl downloads
+third-party/curl-*.tar.gz
+third-party/curl-*/
