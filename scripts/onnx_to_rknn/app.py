@@ -653,7 +653,7 @@ class VirtualEnvManager:
                 
                 # 安装 setuptools（pkg_resources 是 setuptools 的一部分）
                 print(f"  -> 安装 setuptools...")
-                setuptools_cmd = install_cmd[:-1] + ["setuptools", install_cmd[-1]]
+                setuptools_cmd = install_cmd + ["setuptools"]
                 setuptools_process = subprocess.Popen(
                     setuptools_cmd,
                     stdout=None,
