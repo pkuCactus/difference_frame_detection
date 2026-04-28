@@ -88,13 +88,29 @@ bool RknnAdapter::Init(const std::string& modelPath) {
         }
     }
 
-    inputHeight_ = inputAttrs_[0].dims[1];
-    inputWidth_ = inputAttrs_[0].dims[2];
-    inputChannel_ = inputAttrs_[0].dims[3];
+    if (inputAttrs_[0].fmt == RKNN_TENSOR_NCHW) {
+        inputChannel_ = inputAttrs_[0].dims[1];
+        inputHeight_ = inputAttrs_[0].dims[2];
+        inputWidth_ = inputAttrs_[0].dims[3];
+    } else {
+        inputHeight_ = inputAttrs_[0].dims[1];
+        inputWidth_ = inputAttrs_[0].dims[2];
+        inputChannel_ = inputAttrs_[0].dims[3];
+    }
 
-    LOG_INFO("Model input (NHWC): " + std::to_string(inputChannel_) + "x" +
+    std::string fmtStr = (inputAttrs_[0].fmt == RKNN_TENSOR_NCHW) ? "NCHW" : "NHWC";
+    std::string typeStr;
+    switch (inputAttrs_[0].type) {
+        case RKNN_TENSOR_FLOAT32: typeStr = "FP32"; break;
+        case RKNN_TENSOR_FLOAT16: typeStr = "FP16"; break;
+        case RKNN_TENSOR_INT8: typeStr = "INT8"; break;
+        case RKNN_TENSOR_UINT8: typeStr = "UINT8"; break;
+        default: typeStr = "UNKNOWN(" + std::to_string(inputAttrs_[0].type) + ")"; break;
+    }
+
+    LOG_INFO("Model input: " + fmtStr + " " + typeStr + " " +
+             std::to_string(inputChannel_) + "x" +
              std::to_string(inputHeight_) + "x" + std::to_string(inputWidth_));
-    LOG_INFO("Input format: NHWC, type: " + std::to_string(inputAttrs_[0].type));
 
     outputAttrs_.resize(outputNum_);
     for (int32_t i = 0; i < outputNum_; ++i) {
@@ -123,12 +139,23 @@ bool RknnAdapter::Init(const std::string& modelPath) {
 
     inputs_.resize(inputNum_);
     for (int32_t i = 0; i < inputNum_; ++i) {
+        int32_t elemSize = 1;
+        if (inputAttrs_[i].type == RKNN_TENSOR_FLOAT32) elemSize = 4;
+        else if (inputAttrs_[i].type == RKNN_TENSOR_FLOAT16) elemSize = 2;
+
+        inputData_.resize(inputAttrs_[i].n_elems * elemSize);
+
         inputs_[i].index = i;
         inputs_[i].buf = inputData_.data();
         inputs_[i].size = inputData_.size();
         inputs_[i].pass_through = 0;
-        inputs_[i].fmt = RKNN_TENSOR_NHWC;
-        inputs_[i].type = RKNN_TENSOR_UINT8;
+        inputs_[i].fmt = inputAttrs_[i].fmt;
+        inputs_[i].type = inputAttrs_[i].type;
+
+        std::string inFmtStr = (inputAttrs_[i].fmt == RKNN_TENSOR_NCHW) ? "NCHW" : "NHWC";
+        LOG_INFO("Input[" + std::to_string(i) + "]: fmt=" + inFmtStr +
+                 ", type=" + std::to_string(inputAttrs_[i].type) +
+                 ", bytes=" + std::to_string(inputs_[i].size));
     }
 
     outputs_.resize(outputNum_);
@@ -189,14 +216,19 @@ bool RknnAdapter::SetInputBuffer(const uint8_t* data, int32_t Size) {
         return false;
     }
 
-    int32_t expectedSize = GetInputSize();
-    if (Size != expectedSize) {
-        LOG_ERROR("Input Size mismatch: expected " + std::to_string(expectedSize) +
-                  ", got " + std::to_string(Size));
+    if (Size <= 0 || data == nullptr) {
+        LOG_ERROR("Invalid input buffer: size=" + std::to_string(Size));
         return false;
     }
 
 #ifdef RK3566_PLATFORM
+
+    int32_t expectedBytes = static_cast<int32_t>(inputData_.size());
+    if (Size != expectedBytes) {
+        LOG_ERROR("Input size mismatch: expected " + std::to_string(expectedBytes) +
+                  " bytes, got " + std::to_string(Size) + " bytes");
+        return false;
+    }
 
     std::memcpy(inputData_.data(), data, Size);
 
@@ -206,7 +238,7 @@ bool RknnAdapter::SetInputBuffer(const uint8_t* data, int32_t Size) {
         return false;
     }
 
-    LOG_DEBUG("Input buffer set: " + std::to_string(Size) + " bytes (NHWC format)");
+    LOG_DEBUG("Input buffer set: " + std::to_string(Size) + " bytes");
 
 #else
 
@@ -289,6 +321,24 @@ void RknnAdapter::ReleaseOutputs() {
         LOG_DEBUG("RKNN outputs released");
     }
 #endif
+}
+
+int32_t RknnAdapter::GetInputType() const {
+#ifdef RK3566_PLATFORM
+    if (!inputAttrs_.empty()) {
+        return inputAttrs_[0].type;
+    }
+#endif
+    return RKNN_TENSOR_UINT8;
+}
+
+int32_t RknnAdapter::GetInputFormat() const {
+#ifdef RK3566_PLATFORM
+    if (!inputAttrs_.empty()) {
+        return inputAttrs_[0].fmt;
+    }
+#endif
+    return RKNN_TENSOR_NHWC;
 }
 
 int32_t RknnAdapter::GetOutputSize(int32_t index) const {

@@ -257,6 +257,7 @@ int runDetectDebug(const CmdLineArgs& args) {
         }
 
         std::cout << "Image loaded: " << frame.cols << "x" << frame.rows << std::endl;
+        std::cout << "Model input size: " << detector.GetInputWidth() << "x" << detector.GetInputHeight() << std::endl;
 
         auto boxes = detector.Detect(frame);
 

@@ -413,19 +413,57 @@ std::vector<float> RknnDetector::RunInference(const cv::Mat& preprocessed) {
         return {};
     }
 
-    std::vector<uint8_t> inputUint8(inputWidth_ * inputHeight_ * inputChannel_);
-    int32_t rowSize = inputWidth_ * inputChannel_;
-    if (preprocessed.isContinuous()) {
-        std::memcpy(inputUint8.data(), preprocessed.data, inputUint8.size());
-    } else {
-        for (int32_t h = 0; h < inputHeight_; ++h) {
-            std::memcpy(inputUint8.data() + h * rowSize, preprocessed.ptr(h), rowSize);
-        }
-    }
+    int32_t inputType = rknnAdapter_->GetInputType();
+    int32_t inputFormat = rknnAdapter_->GetInputFormat();
 
-    if (!rknnAdapter_->SetInputBuffer(inputUint8.data(), inputUint8.size())) {
-        LOG_ERROR("Failed to set input buffer");
-        return {};
+    bool isFp32 = (inputType == 1);  // RKNN_TENSOR_FLOAT32
+    bool isNchw = (inputFormat == 1); // RKNN_TENSOR_NCHW
+
+    if (isFp32) {
+        // FP32输入需要归一化到[0,1]
+        std::vector<float> inputFloat(inputWidth_ * inputHeight_ * inputChannel_);
+        if (isNchw) {
+            cv::Mat channels[3];
+            cv::split(preprocessed, channels);
+            int32_t channelSize = inputWidth_ * inputHeight_;
+            for (int32_t c = 0; c < inputChannel_; ++c) {
+                for (int32_t i = 0; i < channelSize; ++i) {
+                    inputFloat[c * channelSize + i] =
+                        static_cast<float>(channels[c].data[i]) / 255.0f;
+                }
+            }
+        } else {
+            for (int32_t h = 0; h < inputHeight_; ++h) {
+                for (int32_t w = 0; w < inputWidth_; ++w) {
+                    cv::Vec3b pixel = preprocessed.at<cv::Vec3b>(h, w);
+                    int32_t base = (h * inputWidth_ + w) * inputChannel_;
+                    inputFloat[base + 0] = pixel[0] / 255.0f;
+                    inputFloat[base + 1] = pixel[1] / 255.0f;
+                    inputFloat[base + 2] = pixel[2] / 255.0f;
+                }
+            }
+        }
+        int32_t bytes = static_cast<int32_t>(inputFloat.size() * sizeof(float));
+        if (!rknnAdapter_->SetInputBuffer(
+                reinterpret_cast<const uint8_t*>(inputFloat.data()), bytes)) {
+            LOG_ERROR("Failed to set FP32 input buffer");
+            return {};
+        }
+    } else {
+        // UINT8/INT8输入直接memcpy
+        std::vector<uint8_t> inputUint8(inputWidth_ * inputHeight_ * inputChannel_);
+        int32_t rowSize = inputWidth_ * inputChannel_;
+        if (preprocessed.isContinuous()) {
+            std::memcpy(inputUint8.data(), preprocessed.data, inputUint8.size());
+        } else {
+            for (int32_t h = 0; h < inputHeight_; ++h) {
+                std::memcpy(inputUint8.data() + h * rowSize, preprocessed.ptr(h), rowSize);
+            }
+        }
+        if (!rknnAdapter_->SetInputBuffer(inputUint8.data(), inputUint8.size())) {
+            LOG_ERROR("Failed to set UINT8 input buffer");
+            return {};
+        }
     }
 
     if (!rknnAdapter_->Run()) {

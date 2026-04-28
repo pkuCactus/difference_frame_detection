@@ -68,6 +68,14 @@ struct rknn_output {
     rknn_tensor_type type;
 };
 
+// 兼容 RKNN SDK 的宏命名
+#define RKNN_TENSOR_NCHW RKNN_TENSOR_FORMAT_NCHW
+#define RKNN_TENSOR_NHWC RKNN_TENSOR_FORMAT_NHWC
+#define RKNN_TENSOR_FLOAT32 RKNN_TENSOR_TYPE_FLOAT32
+#define RKNN_TENSOR_FLOAT16 RKNN_TENSOR_TYPE_FLOAT16
+#define RKNN_TENSOR_INT8 RKNN_TENSOR_TYPE_INT8
+#define RKNN_TENSOR_UINT8 RKNN_TENSOR_TYPE_UINT8
+
 #endif
 
 class RknnAdapter {
@@ -86,6 +94,8 @@ public:
     int32_t GetInputHeight() const { return inputHeight_; }
     int32_t GetInputChannel() const { return inputChannel_; }
     int32_t GetInputSize() const { return inputWidth_ * inputHeight_ * inputChannel_; }
+    int32_t GetInputType() const;
+    int32_t GetInputFormat() const;
     
     int32_t GetOutputNum() const { return outputNum_; }
     int32_t GetOutputSize(int32_t index) const;
