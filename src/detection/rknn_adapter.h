@@ -79,8 +79,9 @@ public:
     bool QueryInputOutputInfo();
     bool SetInputBuffer(const uint8_t* data, int32_t Size);
     bool Run();
-    bool GetOutputBuffer(float* data, int32_t Size);
-    
+    bool GetOutputBuffer(int32_t index, float* data, int32_t Size);
+    void ReleaseOutputs();
+
     int32_t GetInputWidth() const { return inputWidth_; }
     int32_t GetInputHeight() const { return inputHeight_; }
     int32_t GetInputChannel() const { return inputChannel_; }
@@ -112,7 +113,8 @@ private:
     
     std::vector<rknn_input> inputs_;
     std::vector<rknn_output> outputs_;
-    
+    std::vector<int32_t> outputOffsets_;
+
     std::vector<uint8_t> inputData_;
     std::vector<float> outputData_;
 };

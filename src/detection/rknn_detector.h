@@ -102,7 +102,8 @@ private:
     
     std::vector<float> inputBuffer_;
     std::vector<float> outputBuffer_;
-    
+    std::vector<std::vector<float>> multiOutputBuffers_;
+
     std::unique_ptr<RknnAdapter> rknnAdapter_;
 };
 

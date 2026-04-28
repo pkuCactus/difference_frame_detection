@@ -88,13 +88,13 @@ bool RknnAdapter::Init(const std::string& modelPath) {
         }
     }
 
-    inputWidth_ = inputAttrs_[0].dims[1];
-    inputHeight_ = inputAttrs_[0].dims[2];
+    inputHeight_ = inputAttrs_[0].dims[1];
+    inputWidth_ = inputAttrs_[0].dims[2];
     inputChannel_ = inputAttrs_[0].dims[3];
 
-    LOG_INFO("Model input (NCHW): " + std::to_string(inputChannel_) + "x" +
+    LOG_INFO("Model input (NHWC): " + std::to_string(inputChannel_) + "x" +
              std::to_string(inputHeight_) + "x" + std::to_string(inputWidth_));
-    LOG_INFO("Input format: NCHW, type: " + std::to_string(inputAttrs_[0].type));
+    LOG_INFO("Input format: NHWC, type: " + std::to_string(inputAttrs_[0].type));
 
     outputAttrs_.resize(outputNum_);
     for (int32_t i = 0; i < outputNum_; ++i) {
@@ -107,15 +107,42 @@ bool RknnAdapter::Init(const std::string& modelPath) {
         }
     }
 
-    int32_t outputSize = outputAttrs_[0].n_elems;
-    LOG_INFO("Model output: n_elems=" + std::to_string(outputSize) +
-             ", dims: " + std::to_string(outputAttrs_[0].dims[0]) + "x" +
-             std::to_string(outputAttrs_[0].dims[1]) + "x" +
-             std::to_string(outputAttrs_[0].dims[2]) + "x" +
-             std::to_string(outputAttrs_[0].dims[3]));
+    int32_t totalOutputSize = 0;
+    for (int32_t i = 0; i < outputNum_; ++i) {
+        totalOutputSize += outputAttrs_[i].n_elems;
+        LOG_INFO("Model output[" + std::to_string(i) + "]: n_elems=" +
+                 std::to_string(outputAttrs_[i].n_elems) +
+                 ", dims=[" + std::to_string(outputAttrs_[i].dims[0]) + "," +
+                 std::to_string(outputAttrs_[i].dims[1]) + "," +
+                 std::to_string(outputAttrs_[i].dims[2]) + "," +
+                 std::to_string(outputAttrs_[i].dims[3]) + "]");
+    }
 
     inputData_.resize(GetInputSize());
-    outputData_.resize(outputSize);
+    outputData_.resize(totalOutputSize);
+
+    inputs_.resize(inputNum_);
+    for (int32_t i = 0; i < inputNum_; ++i) {
+        inputs_[i].index = i;
+        inputs_[i].buf = inputData_.data();
+        inputs_[i].size = inputData_.size();
+        inputs_[i].pass_through = 0;
+        inputs_[i].fmt = RKNN_TENSOR_NHWC;
+        inputs_[i].type = RKNN_TENSOR_UINT8;
+    }
+
+    outputs_.resize(outputNum_);
+    float* outputPtr = outputData_.data();
+    outputOffsets_.resize(outputNum_);
+    for (int32_t i = 0; i < outputNum_; ++i) {
+        outputs_[i].index = i;
+        outputs_[i].want_float = 1;
+        outputs_[i].is_prealloc = 1;
+        outputs_[i].buf = outputPtr;
+        outputs_[i].size = outputAttrs_[i].n_elems * sizeof(float);
+        outputOffsets_[i] = static_cast<int32_t>(outputPtr - outputData_.data());
+        outputPtr += outputAttrs_[i].n_elems;
+    }
 
 #endif
 
@@ -171,23 +198,6 @@ bool RknnAdapter::SetInputBuffer(const uint8_t* data, int32_t Size) {
 
 #ifdef RK3566_PLATFORM
 
-    inputs_.resize(inputNum_);
-    for (int32_t i = 0; i < inputNum_; ++i) {
-        inputs_[i].index = i;
-        inputs_[i].buf = inputData_.data();
-        inputs_[i].size = inputData_.size();
-        inputs_[i].pass_through = 0;
-        inputs_[i].fmt = RKNN_TENSOR_NCHW;
-
-        if (inputAttrs_[i].type == RKNN_TENSOR_UINT8) {
-            inputs_[i].type = RKNN_TENSOR_UINT8;
-        } else if (inputAttrs_[i].type == RKNN_TENSOR_INT8) {
-            inputs_[i].type = RKNN_TENSOR_INT8;
-        } else {
-            inputs_[i].type = RKNN_TENSOR_UINT8;
-        }
-    }
-
     std::memcpy(inputData_.data(), data, Size);
 
     int32_t ret = rknn_inputs_set(rknnCtx_, inputNum_, inputs_.data());
@@ -196,7 +206,7 @@ bool RknnAdapter::SetInputBuffer(const uint8_t* data, int32_t Size) {
         return false;
     }
 
-    LOG_DEBUG("Input buffer set: " + std::to_string(Size) + " bytes (NCHW format)");
+    LOG_DEBUG("Input buffer set: " + std::to_string(Size) + " bytes (NHWC format)");
 
 #else
 
@@ -214,15 +224,6 @@ bool RknnAdapter::Run() {
     }
 
 #ifdef RK3566_PLATFORM
-
-    outputs_.resize(outputNum_);
-    for (int32_t i = 0; i < outputNum_; ++i) {
-        outputs_[i].want_float = 1;
-        outputs_[i].is_prealloc = 1;
-        outputs_[i].index = i;
-        outputs_[i].buf = outputData_.data();
-        outputs_[i].size = outputData_.size() * sizeof(float);
-    }
 
     int32_t ret = rknn_run(rknnCtx_, nullptr);
     if (ret < 0) {
@@ -247,7 +248,7 @@ bool RknnAdapter::Run() {
     return true;
 }
 
-bool RknnAdapter::GetOutputBuffer(float* data, int32_t Size) {
+bool RknnAdapter::GetOutputBuffer(int32_t index, float* data, int32_t Size) {
     if (!initialized_) {
         LOG_ERROR("RKNN adapter not initialized");
         return false;
@@ -255,18 +256,22 @@ bool RknnAdapter::GetOutputBuffer(float* data, int32_t Size) {
 
 #ifdef RK3566_PLATFORM
 
-    int32_t outputSize = outputAttrs_[0].n_elems;
+    if (index >= outputNum_) {
+        LOG_ERROR("Output index out of range: " + std::to_string(index));
+        return false;
+    }
+
+    int32_t outputSize = outputAttrs_[index].n_elems;
     if (Size != outputSize) {
         LOG_ERROR("Output Size mismatch: expected " + std::to_string(outputSize) +
                   ", got " + std::to_string(Size));
         return false;
     }
 
-    std::memcpy(data, outputData_.data(), Size * sizeof(float));
+    std::memcpy(data, outputData_.data() + outputOffsets_[index], Size * sizeof(float));
 
-    rknn_outputs_release(rknnCtx_, outputNum_, outputs_.data());
-
-    LOG_DEBUG("Output buffer retrieved: " + std::to_string(Size) + " floats");
+    LOG_DEBUG("Output buffer retrieved: index=" + std::to_string(index) +
+              ", size=" + std::to_string(Size) + " floats");
 
 #else
 
@@ -275,6 +280,15 @@ bool RknnAdapter::GetOutputBuffer(float* data, int32_t Size) {
 #endif
 
     return true;
+}
+
+void RknnAdapter::ReleaseOutputs() {
+#ifdef RK3566_PLATFORM
+    if (rknnCtx_ && !outputs_.empty()) {
+        rknn_outputs_release(rknnCtx_, outputNum_, outputs_.data());
+        LOG_DEBUG("RKNN outputs released");
+    }
+#endif
 }
 
 int32_t RknnAdapter::GetOutputSize(int32_t index) const {

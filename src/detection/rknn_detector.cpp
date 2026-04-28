@@ -256,19 +256,30 @@ std::vector<BoundingBox> RknnDetector::Detect(const cv::Mat& frame) {
     }
     
     std::vector<BoundingBox> boxes;
-    
+
     if (!outputs.empty()) {
-        boxes = postprocess_->Process(
-            outputs,
-            static_cast<int32_t>(outputs.size()),
-            inputWidth_,
-            inputHeight_,
-            lastFrameWidth_,
-            lastFrameHeight_,
-            scaleX,
-            scaleY,
-            offsetX,
-            offsetY);
+        if (multiOutputBuffers_.size() > 1 && config_.modelType == "yolov5") {
+            boxes = postprocess_->ProcessRknnYolov5(
+                multiOutputBuffers_,
+                lastFrameWidth_,
+                lastFrameHeight_,
+                scaleX,
+                scaleY,
+                offsetX,
+                offsetY);
+        } else {
+            boxes = postprocess_->Process(
+                outputs,
+                static_cast<int32_t>(outputs.size()),
+                inputWidth_,
+                inputHeight_,
+                lastFrameWidth_,
+                lastFrameHeight_,
+                scaleX,
+                scaleY,
+                offsetX,
+                offsetY);
+        }
     }
     
     if (perfStats_) {
@@ -401,46 +412,52 @@ std::vector<float> RknnDetector::RunInference(const cv::Mat& preprocessed) {
         LOG_DEBUG("RKNN adapter not initialized, returning empty results");
         return {};
     }
-    
-    cv::Mat floatMat;
-    preprocessed.convertTo(floatMat, CV_32F);
-    floatMat = floatMat / 255.0f;
-    
+
     std::vector<uint8_t> inputUint8(inputWidth_ * inputHeight_ * inputChannel_);
-    
-    cv::Mat channels[3];
-    cv::split(preprocessed, channels);
-    
-    int32_t channelSize = inputWidth_ * inputHeight_;
-    for (int32_t c = 0; c < inputChannel_; ++c) {
-        int32_t offset = c * channelSize;
-        for (int32_t i = 0; i < channelSize; ++i) {
-            inputUint8[offset + i] = channels[c].data[i];
+    int32_t rowSize = inputWidth_ * inputChannel_;
+    if (preprocessed.isContinuous()) {
+        std::memcpy(inputUint8.data(), preprocessed.data, inputUint8.size());
+    } else {
+        for (int32_t h = 0; h < inputHeight_; ++h) {
+            std::memcpy(inputUint8.data() + h * rowSize, preprocessed.ptr(h), rowSize);
         }
     }
-    
+
     if (!rknnAdapter_->SetInputBuffer(inputUint8.data(), inputUint8.size())) {
         LOG_ERROR("Failed to set input buffer");
         return {};
     }
-    
+
     if (!rknnAdapter_->Run()) {
         LOG_ERROR("RKNN inference failed");
         return {};
     }
-    
-    std::vector<float> outputs;
-    int32_t outputSize = rknnAdapter_->GetOutputSize(0);
-    if (outputSize > 0) {
-        outputs.resize(outputSize);
-        if (!rknnAdapter_->GetOutputBuffer(outputs.data(), outputSize)) {
-            LOG_ERROR("Failed to get output buffer");
-            return {};
+
+    int32_t outputNum = rknnAdapter_->GetOutputNum();
+    multiOutputBuffers_.resize(outputNum);
+
+    for (int32_t i = 0; i < outputNum; ++i) {
+        int32_t outputSize = rknnAdapter_->GetOutputSize(i);
+        if (outputSize > 0) {
+            multiOutputBuffers_[i].resize(outputSize);
+            if (!rknnAdapter_->GetOutputBuffer(i, multiOutputBuffers_[i].data(), outputSize)) {
+                LOG_ERROR("Failed to get output buffer for index " + std::to_string(i));
+                return {};
+            }
         }
     }
-    
-    LOG_DEBUG("RKNN inference completed: output_size=" + std::to_string(outputs.size()));
-    
+
+    rknnAdapter_->ReleaseOutputs();
+
+    std::vector<float> outputs;
+    if (!multiOutputBuffers_.empty()) {
+        outputs = multiOutputBuffers_[0];
+        outputBuffer_ = outputs;
+    }
+
+    LOG_DEBUG("RKNN inference completed: output_num=" + std::to_string(outputNum) +
+              ", output0_size=" + std::to_string(outputs.size()));
+
     return outputs;
 }
 

@@ -146,6 +146,114 @@ std::vector<BoundingBox> YoloPostprocess::ProcessYolov3(const std::vector<float>
                          scaleX, scaleY, offsetX, offsetY);
 }
 
+std::vector<BoundingBox> YoloPostprocess::ProcessRknnYolov5(
+    const std::vector<std::vector<float>>& outputs,
+    int originalWidth,
+    int originalHeight,
+    float scaleX,
+    float scaleY,
+    int offsetX,
+    int offsetY) {
+
+    std::vector<BoundingBox> boxes;
+
+    const std::vector<std::vector<std::pair<float, float>>> anchors = {
+        {{10, 13}, {16, 30}, {33, 23}},
+        {{30, 61}, {62, 45}, {59, 119}},
+        {{116, 90}, {156, 198}, {373, 326}}
+    };
+    const std::vector<int32_t> strides = {8, 16, 32};
+
+    for (size_t i = 0; i < outputs.size(); ++i) {
+        const auto& output = outputs[i];
+        if (output.empty()) {
+            continue;
+        }
+
+        int32_t gridSize = static_cast<int32_t>(std::sqrt(output.size() / 255));
+        if (gridSize * gridSize * 255 != static_cast<int32_t>(output.size())) {
+            LOG_WARN("Unexpected output size for layer " + std::to_string(i) +
+                     ": expected " + std::to_string(gridSize * gridSize * 255) +
+                     ", got " + std::to_string(output.size()));
+            continue;
+        }
+
+        int32_t stride = 0;
+        if (gridSize == 80 || gridSize == 52) stride = 8;
+        else if (gridSize == 40 || gridSize == 26) stride = 16;
+        else if (gridSize == 20 || gridSize == 13) stride = 32;
+        else {
+            LOG_WARN("Unknown grid size " + std::to_string(gridSize) + " for layer " + std::to_string(i));
+            continue;
+        }
+
+        int32_t anchorIdx = 0;
+        if (stride == 8) anchorIdx = 0;
+        else if (stride == 16) anchorIdx = 1;
+        else anchorIdx = 2;
+
+        int32_t gridPixels = gridSize * gridSize;
+
+        for (int32_t gy = 0; gy < gridSize; ++gy) {
+            for (int32_t gx = 0; gx < gridSize; ++gx) {
+                for (int32_t a = 0; a < 3; ++a) {
+                    int32_t pixelIdx = gy * gridSize + gx;
+                    int32_t baseC = a * 85;
+                    float x = output[(baseC + 0) * gridPixels + pixelIdx];
+                    float y = output[(baseC + 1) * gridPixels + pixelIdx];
+                    float w = output[(baseC + 2) * gridPixels + pixelIdx];
+                    float h = output[(baseC + 3) * gridPixels + pixelIdx];
+                    float objConf = output[(baseC + 4) * gridPixels + pixelIdx];
+
+                    x = 1.0f / (1.0f + std::exp(-x));
+                    y = 1.0f / (1.0f + std::exp(-y));
+                    w = 1.0f / (1.0f + std::exp(-w));
+                    h = 1.0f / (1.0f + std::exp(-h));
+                    objConf = 1.0f / (1.0f + std::exp(-objConf));
+
+                    int classIdx = 0;
+                    float maxClassConf = 0.0f;
+                    for (int c = 0; c < NUM_CLASSES; ++c) {
+                        float classConf = 1.0f / (1.0f + std::exp(-output[(baseC + 5 + c) * gridPixels + pixelIdx]));
+                        if (classConf > maxClassConf) {
+                            maxClassConf = classConf;
+                            classIdx = c;
+                        }
+                    }
+
+                    float finalConf = objConf * maxClassConf;
+
+                    if (finalConf < confThreshold_ || classIdx != PERSON_CLASS) {
+                        continue;
+                    }
+
+                    float anchorW = anchors[anchorIdx][a].first;
+                    float anchorH = anchors[anchorIdx][a].second;
+                    float strideF = static_cast<float>(stride);
+
+                    float cx = (x * 2.0f - 0.5f + static_cast<float>(gx)) * strideF;
+                    float cy = (y * 2.0f - 0.5f + static_cast<float>(gy)) * strideF;
+                    float bw = std::pow(w * 2.0f, 2) * anchorW;
+                    float bh = std::pow(h * 2.0f, 2) * anchorH;
+
+                    BoundingBox box;
+                    box.x1 = cx - bw / 2.0f;
+                    box.y1 = cy - bh / 2.0f;
+                    box.x2 = cx + bw / 2.0f;
+                    box.y2 = cy + bh / 2.0f;
+                    box.conf = finalConf;
+                    box.label = classIdx;
+
+                    box = RestoreBox(box, scaleX, scaleY, offsetX, offsetY);
+                    boxes.push_back(box);
+                }
+            }
+        }
+    }
+
+    return nms(boxes);
+}
+
 std::vector<BoundingBox> YoloPostprocess::nms(std::vector<BoundingBox>& boxes) {
     if (boxes.empty()) {
         return boxes;

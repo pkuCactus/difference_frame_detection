@@ -24,7 +24,16 @@ public:
                                       float scaleY,
                                       int offsetX,
                                       int offsetY);
-    
+
+    std::vector<BoundingBox> ProcessRknnYolov5(
+        const std::vector<std::vector<float>>& outputs,
+        int originalWidth,
+        int originalHeight,
+        float scaleX,
+        float scaleY,
+        int offsetX,
+        int offsetY);
+
     void SetConfThreshold(float threshold) { confThreshold_ = threshold; }
     void SetNmsThreshold(float threshold) { nmsThreshold_ = threshold; }
     
