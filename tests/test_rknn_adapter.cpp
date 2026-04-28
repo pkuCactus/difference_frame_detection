@@ -79,7 +79,7 @@ TEST(RknnAdapterTest, GetOutput) {
     EXPECT_EQ(outputSize, 0);
     
     std::vector<float> outputBuffer(outputSize);
-    bool result = adapter.GetOutputBuffer(outputBuffer.data(), outputSize);
+    bool result = adapter.GetOutputBuffer(0, outputBuffer.data(), outputSize);
     EXPECT_TRUE(result);
     
     adapter.release();

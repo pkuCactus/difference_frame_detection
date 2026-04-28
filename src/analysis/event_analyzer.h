@@ -47,7 +47,6 @@ private:
     bool ValidateBoxes(const std::vector<BoundingBox>& boxes);
     bool ValidateInput(const cv::Mat& frame, const std::vector<BoundingBox>& boxes);
     bool ValidateInput(const std::vector<cv::Mat>& frames, const std::vector<BoundingBox>& boxes);
-    void drawBoxes(cv::Mat& frame, const std::vector<BoundingBox>& boxes);
     std::string generateEventId();
 
     EventAnalysisMode mode_;

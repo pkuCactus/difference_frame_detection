@@ -41,8 +41,20 @@ add_subdirectory(third-party/yaml-cpp)
 # nlohmann/json（header-only 库）
 include(BuildJson)
 
-include(BuildFFmpeg)
-include(BuildOpenCV)
+# 本地编译使用系统库，交叉编译时自己构建
+if(CMAKE_TOOLCHAIN_FILE)
+    include(BuildFFmpeg)
+    include(BuildOpenCV)
+    set(OPENCV_FFMPEG_DEPS opencv_external ffmpeg_external)
+else()
+    # 本地编译：使用系统 OpenCV 和 FFmpeg
+    find_package(OpenCV REQUIRED)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(FFMPEG REQUIRED libavcodec libavformat libavutil libswscale libswresample)
+    set(FFMPEG_INCLUDE_DIRS ${FFMPEG_INCLUDE_DIRS})
+    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES})
+    set(OPENCV_FFMPEG_DEPS "")
+endif()
 
 # CURL：本地编译用系统库，交叉编译时自己编译
 if(RK3566_PLATFORM)
@@ -59,6 +71,7 @@ set(SOURCES
     src/common/config.cpp
     src/common/logger.cpp
     src/common/performance_stats.cpp
+    src/common/visualization.cpp
     src/core/state_machine.cpp
     src/core/pipeline.cpp
     src/rtsp/rtsp_client.cpp
@@ -77,7 +90,12 @@ set(SOURCES
 )
 
 add_executable(difference_detection src/main.cpp ${SOURCES})
-add_dependencies(difference_detection opencv_external ffmpeg_external ${CURL_EXTERNAL_DEPS})
+if(OPENCV_FFMPEG_DEPS)
+    add_dependencies(difference_detection ${OPENCV_FFMPEG_DEPS})
+endif()
+if(CURL_EXTERNAL_DEPS)
+    add_dependencies(difference_detection ${CURL_EXTERNAL_DEPS})
+endif()
 
 target_include_directories(difference_detection PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -179,13 +197,21 @@ endif()
 # 自动打包部署文件
 set(DEPLOY_DIR "${CMAKE_BINARY_DIR}/deploy")
 
-add_custom_command(TARGET difference_detection POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${DEPLOY_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:difference_detection> ${DEPLOY_DIR}/
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FFMPEG_LIBRARIES} ${DEPLOY_DIR}/
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${OPENCV_INSTALL_DIR}/sdk/native/libs/${ANDROID_ABI}/libopencv_videoio_ffmpeg.so ${DEPLOY_DIR}/
-    COMMENT "Deploying binaries and libraries to ${DEPLOY_DIR}"
-)
+if(CMAKE_TOOLCHAIN_FILE)
+    add_custom_command(TARGET difference_detection POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${DEPLOY_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:difference_detection> ${DEPLOY_DIR}/
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FFMPEG_LIBRARIES} ${DEPLOY_DIR}/
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${OPENCV_INSTALL_DIR}/sdk/native/libs/${ANDROID_ABI}/libopencv_videoio_ffmpeg.so ${DEPLOY_DIR}/
+        COMMENT "Deploying binaries and libraries to ${DEPLOY_DIR}"
+    )
+else()
+    add_custom_command(TARGET difference_detection POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${DEPLOY_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:difference_detection> ${DEPLOY_DIR}/
+        COMMENT "Deploying binary to ${DEPLOY_DIR}"
+    )
+endif()
 
 if(ANDROID AND ANDROID_NDK_DIR)
     if(ANDROID_ABI STREQUAL "arm64-v8a")

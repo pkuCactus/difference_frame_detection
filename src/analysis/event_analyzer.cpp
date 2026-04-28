@@ -1,5 +1,6 @@
 #include "analysis/event_analyzer.h"
 #include "common/logger.h"
+#include "common/visualization.h"
 #include <chrono>
 #include <filesystem>
 #include <sstream>
@@ -94,7 +95,7 @@ void EventAnalyzer::AnalyzeImage(const cv::Mat& frame,
     SaveFrame(frame, eventId + ".jpg");
 
     cv::Mat annotatedFrame = frame.clone();
-    drawBoxes(annotatedFrame, boxes);
+    DrawBoundingBoxes(annotatedFrame, boxes);
 
     LOG_INFO("Event analysis (image): eventId=" + eventId +
              ", boxes=" + std::to_string(boxes.size()) +
@@ -126,13 +127,13 @@ void EventAnalyzer::AnalyzeVideo(const std::vector<cv::Mat>& frames,
              ", totalEvents=" + std::to_string(eventCount_));
 
     cv::Mat annotatedFrame = frames[0].clone();
-    drawBoxes(annotatedFrame, boxes);
-    
+    DrawBoundingBoxes(annotatedFrame, boxes);
+
     if (callback_) {
         for (size_t i = 0; i < frames.size(); ++i) {
             cv::Mat annotated = frames[i].clone();
             if (i == 0) {
-                drawBoxes(annotated, boxes);
+                DrawBoundingBoxes(annotated, boxes);
             }
             callback_(annotated, boxes, static_cast<int>(i),
                       std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -147,23 +148,6 @@ void EventAnalyzer::setEventCallback(EventCallback callback) {
 
 void EventAnalyzer::setVideoBuffer(std::deque<cv::Mat>* buffer) {
     videoBuffer_ = buffer;
-}
-
-void EventAnalyzer::drawBoxes(cv::Mat& frame, const std::vector<BoundingBox>& boxes) {
-    for (const auto& box : boxes) {
-        cv::Rect rect(static_cast<int>(box.x1), static_cast<int>(box.y1),
-                      static_cast<int>(box.x2 - box.x1), static_cast<int>(box.y2 - box.y1));
-        
-        cv::rectangle(frame, rect, cv::Scalar(0, 255, 0), 2);
-        
-        std::ostringstream oss;
-        oss << std::fixed << std::setprecision(2) << box.conf;
-        std::string text = "person: " + oss.str();
-        
-        cv::Point textPos(static_cast<int>(box.x1), static_cast<int>(box.y1) - 5);
-        cv::putText(frame, text, textPos, cv::FONT_HERSHEY_SIMPLEX, 0.5, 
-                    cv::Scalar(0, 255, 0), 1);
-    }
 }
 
 std::string EventAnalyzer::generateEventId() {

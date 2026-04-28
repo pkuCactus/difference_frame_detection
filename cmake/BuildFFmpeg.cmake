@@ -34,30 +34,36 @@ if(CMAKE_TOOLCHAIN_FILE AND ANDROID_ABI)
         --extra-cflags="-fPIC -Os"
         --extra-ldflags="-Wl,--no-undefined"
     )
-else()
-    message(FATAL_ERROR "BuildFFmpeg.cmake only supports Android cross-compile currently")
-endif()
 
-ExternalProject_Add(ffmpeg_external
-    URL https://github.com/FFmpeg/FFmpeg/archive/refs/tags/${FFMPEG_VERSION}.tar.gz
-    SOURCE_DIR ${FFMPEG_SOURCE_DIR}
-    BINARY_DIR ${FFMPEG_BUILD_DIR}
-    CONFIGURE_COMMAND bash ${FFMPEG_SOURCE_DIR}/configure ${FFMPEG_CONFIGURE_OPTIONS}
-    BUILD_COMMAND $(MAKE) -j4
-    INSTALL_COMMAND $(MAKE) install
-    BUILD_BYPRODUCTS
-    ${FFMPEG_INSTALL_DIR}/lib/libavformat.so
-    ${FFMPEG_INSTALL_DIR}/lib/libswresample.so
-    ${FFMPEG_INSTALL_DIR}/lib/libavcodec.so
-    ${FFMPEG_INSTALL_DIR}/lib/libswscale.so
+    ExternalProject_Add(ffmpeg_external
+        URL https://github.com/FFmpeg/FFmpeg/archive/refs/tags/${FFMPEG_VERSION}.tar.gz
+        SOURCE_DIR ${FFMPEG_SOURCE_DIR}
+        BINARY_DIR ${FFMPEG_BUILD_DIR}
+        CONFIGURE_COMMAND bash ${FFMPEG_SOURCE_DIR}/configure ${FFMPEG_CONFIGURE_OPTIONS}
+        BUILD_COMMAND $(MAKE) -j4
+        INSTALL_COMMAND $(MAKE) install
+        BUILD_BYPRODUCTS
+        ${FFMPEG_INSTALL_DIR}/lib/libavformat.so
+        ${FFMPEG_INSTALL_DIR}/lib/libswresample.so
+        ${FFMPEG_INSTALL_DIR}/lib/libavcodec.so
+        ${FFMPEG_INSTALL_DIR}/lib/libswscale.so
         ${FFMPEG_INSTALL_DIR}/lib/libavutil.so
-)
+    )
 
-set(FFMPEG_INCLUDE_DIRS ${FFMPEG_INSTALL_DIR}/include)
-set(FFMPEG_LIBRARIES
-    ${FFMPEG_INSTALL_DIR}/lib/libavformat.so
-    ${FFMPEG_INSTALL_DIR}/lib/libswresample.so
-    ${FFMPEG_INSTALL_DIR}/lib/libavcodec.so
-    ${FFMPEG_INSTALL_DIR}/lib/libswscale.so
-    ${FFMPEG_INSTALL_DIR}/lib/libavutil.so
-)
+    set(FFMPEG_INCLUDE_DIRS ${FFMPEG_INSTALL_DIR}/include)
+    set(FFMPEG_LIBRARIES
+        ${FFMPEG_INSTALL_DIR}/lib/libavformat.so
+        ${FFMPEG_INSTALL_DIR}/lib/libswresample.so
+        ${FFMPEG_INSTALL_DIR}/lib/libavcodec.so
+        ${FFMPEG_INSTALL_DIR}/lib/libswscale.so
+        ${FFMPEG_INSTALL_DIR}/lib/libavutil.so
+    )
+else()
+    # 本地编译：使用系统 FFmpeg
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(FFMPEG REQUIRED libavcodec libavformat libavutil libswscale libswresample)
+    set(FFMPEG_INCLUDE_DIRS ${FFMPEG_INCLUDE_DIRS})
+    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES})
+    # 虚拟 target 保持兼容性
+    add_custom_target(ffmpeg_external)
+endif()

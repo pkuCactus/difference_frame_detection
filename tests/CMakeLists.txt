@@ -16,6 +16,7 @@ set(TEST_SOURCES
     test_rknn_adapter.cpp
     test_rtsp_validator.cpp
     test_event_analyzer.cpp
+    test_visualization.cpp
     ${CMAKE_SOURCE_DIR}/src/common/config.cpp
     ${CMAKE_SOURCE_DIR}/src/common/logger.cpp
     ${CMAKE_SOURCE_DIR}/src/common/performance_stats.cpp
@@ -33,11 +34,20 @@ set(TEST_SOURCES
     ${CMAKE_SOURCE_DIR}/src/analysis/similarity.cpp
     ${CMAKE_SOURCE_DIR}/src/analysis/event_analyzer.cpp
     ${CMAKE_SOURCE_DIR}/src/utils/frame_queue.cpp
+    ${CMAKE_SOURCE_DIR}/src/common/visualization.cpp
 )
 
 add_executable(difference_detection_tests ${TEST_SOURCES})
 
-add_dependencies(difference_detection_tests opencv_external ${CURL_EXTERNAL_DEPS})
+if(NOT CMAKE_TOOLCHAIN_FILE)
+    find_package(OpenCV REQUIRED)
+endif()
+if(OPENCV_FFMPEG_DEPS)
+    add_dependencies(difference_detection_tests ${OPENCV_FFMPEG_DEPS})
+endif()
+if(CURL_EXTERNAL_DEPS)
+    add_dependencies(difference_detection_tests ${CURL_EXTERNAL_DEPS})
+endif()
 
 target_include_directories(difference_detection_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/src
