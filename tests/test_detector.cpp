@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "detection/rknn_detector.h"
 #include "common/config.h"
+#include "common/visualization.h"
 #include <opencv2/opencv.hpp>
 
 using namespace diff_det;
@@ -35,9 +36,36 @@ TEST(RknnDetectorTest, EmptyFrame) {
     LocalDetectionConfig config;
     RknnDetector detector(config);
     detector.Init();
-    
+
     cv::Mat emptyFrame;
     std::vector<BoundingBox> boxes = detector.Detect(emptyFrame);
-    
+
     EXPECT_TRUE(boxes.empty());
+}
+
+TEST(RknnDetectorTest, DetectSingleImage) {
+    LocalDetectionConfig config;
+    RknnDetector detector(config);
+    EXPECT_TRUE(detector.Init());
+
+    cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
+    std::vector<BoundingBox> boxes = detector.Detect(frame);
+
+    // stub 模式下返回空框，验证接口可正常调用
+    EXPECT_TRUE(boxes.empty());
+}
+
+TEST(RknnDetectorTest, DetectAndDrawBoxes) {
+    LocalDetectionConfig config;
+    RknnDetector detector(config);
+    EXPECT_TRUE(detector.Init());
+
+    cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(128, 128, 128));
+    std::vector<BoundingBox> boxes = detector.Detect(frame);
+
+    // stub 模式下返回空框，验证绘制不崩溃
+    cv::Mat result = frame.clone();
+    DrawBoundingBoxes(result, boxes);
+    EXPECT_EQ(result.size(), frame.size());
+    EXPECT_EQ(result.type(), frame.type());
 }
