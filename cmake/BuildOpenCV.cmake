@@ -32,8 +32,8 @@ set(OPENCV_BUILD_OPTIONS
     -DWITH_CUDA=OFF
     -DWITH_V4L=OFF
     -DWITH_1394=OFF
-    -DWITH_PNG=ON
-    -DBUILD_PNG=ON
+    -DWITH_PNG=OFF
+    -DBUILD_PNG=OFF
     -DWITH_JPEG=ON
     -DBUILD_JPEG=ON
     -DWITH_TIFF=OFF
@@ -88,6 +88,7 @@ if(CMAKE_TOOLCHAIN_FILE AND ANDROID_ABI)
         ${OPENCV_INSTALL_DIR}/sdk/native/staticlibs/${ANDROID_ABI}/libopencv_video.a
         ${OPENCV_INSTALL_DIR}/sdk/native/staticlibs/${ANDROID_ABI}/libopencv_imgproc.a
         ${OPENCV_INSTALL_DIR}/sdk/native/staticlibs/${ANDROID_ABI}/libopencv_core.a
+        ${OPENCV_INSTALL_DIR}/sdk/native/3rdparty/libs/${ANDROID_ABI}/liblibjpeg-turbo.a
         ${OPENCV_INSTALL_DIR}/sdk/native/3rdparty/libs/${ANDROID_ABI}/libcpufeatures.a
         ${OPENCV_INSTALL_DIR}/sdk/native/3rdparty/libs/${ANDROID_ABI}/libtegra_hal.a
     )
