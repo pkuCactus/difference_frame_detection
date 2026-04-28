@@ -32,37 +32,37 @@ bool RknnAdapter::CheckPlatform() {
 
 bool RknnAdapter::Init(const std::string& modelPath) {
     LOG_INFO("Initializing RKNN adapter with model: " + modelPath);
-    
+
     if (!CheckPlatform()) {
         LOG_WARN("RK3566 platform not detected, using stub mode");
         initialized_ = true;
         return true;
     }
-    
+
     std::vector<uint8_t> modelData;
     if (!LoadModelFile(modelPath, modelData)) {
         LOG_ERROR("Failed to load model file: " + modelPath);
         return false;
     }
-    
+
     LOG_INFO("Model loaded: Size=" + std::to_string(modelData.size()) + " bytes");
-    
+
 #ifdef RK3566_PLATFORM
-    
+
     int32_t ret = rknn_init(&rknnCtx_, modelData.data(), modelData.size(), 0, nullptr);
     if (ret < 0) {
         LOG_ERROR("rknn_init failed: ret=" + std::to_string(ret));
         return false;
     }
-    
+
     LOG_INFO("RKNN model initialized successfully");
-    
+
     rknn_sdk_version version;
     ret = rknn_query(rknnCtx_, RKNN_QUERY_SDK_VERSION, &version, sizeof(version));
     if (ret == RKNN_SUCC) {
         LOG_INFO("RKNN SDK version: " + std::string(version.api_version));
     }
-    
+
     rknn_input_output_num io_num;
     ret = rknn_query(rknnCtx_, RKNN_QUERY_IN_OUT_NUM, &io_num, sizeof(io_num));
     if (ret < 0) {
@@ -70,13 +70,13 @@ bool RknnAdapter::Init(const std::string& modelPath) {
         release();
         return false;
     }
-    
+
     inputNum_ = io_num.n_input;
     outputNum_ = io_num.n_output;
-    
-    LOG_INFO("Model input_num=" + std::to_string(inputNum_) + 
+
+    LOG_INFO("Model input_num=" + std::to_string(inputNum_) +
              ", output_num=" + std::to_string(outputNum_));
-    
+
     inputAttrs_.resize(inputNum_);
     for (int32_t i = 0; i < inputNum_; ++i) {
         inputAttrs_[i].index = i;
@@ -87,15 +87,15 @@ bool RknnAdapter::Init(const std::string& modelPath) {
             return false;
         }
     }
-    
-    inputWidth_ = inputAttrs_[0].dims[3];
+
+    inputWidth_ = inputAttrs_[0].dims[1];
     inputHeight_ = inputAttrs_[0].dims[2];
-    inputChannel_ = inputAttrs_[0].dims[1];
-    
+    inputChannel_ = inputAttrs_[0].dims[3];
+
     LOG_INFO("Model input (NCHW): " + std::to_string(inputChannel_) + "x" +
              std::to_string(inputHeight_) + "x" + std::to_string(inputWidth_));
     LOG_INFO("Input format: NCHW, type: " + std::to_string(inputAttrs_[0].type));
-    
+
     outputAttrs_.resize(outputNum_);
     for (int32_t i = 0; i < outputNum_; ++i) {
         outputAttrs_[i].index = i;
@@ -106,19 +106,19 @@ bool RknnAdapter::Init(const std::string& modelPath) {
             return false;
         }
     }
-    
+
     int32_t outputSize = outputAttrs_[0].n_elems;
     LOG_INFO("Model output: n_elems=" + std::to_string(outputSize) +
              ", dims: " + std::to_string(outputAttrs_[0].dims[0]) + "x" +
              std::to_string(outputAttrs_[0].dims[1]) + "x" +
              std::to_string(outputAttrs_[0].dims[2]) + "x" +
              std::to_string(outputAttrs_[0].dims[3]));
-    
+
     inputData_.resize(GetInputSize());
     outputData_.resize(outputSize);
-    
+
 #endif
-    
+
     initialized_ = true;
     return true;
 }
@@ -128,11 +128,11 @@ bool RknnAdapter::QueryInputOutputInfo() {
         LOG_ERROR("RKNN adapter not initialized");
         return false;
     }
-    
+
 #ifdef RK3566_PLATFORM
-    
+
     for (int32_t i = 0; i < inputNum_; ++i) {
-        LOG_INFO("Input " + std::to_string(i) + ": format=" + 
+        LOG_INFO("Input " + std::to_string(i) + ": format=" +
                  std::to_string(inputAttrs_[i].fmt) +
                  ", type=" + std::to_string(inputAttrs_[i].type) +
                  ", size=" + std::to_string(inputAttrs_[i].size) +
@@ -141,7 +141,7 @@ bool RknnAdapter::QueryInputOutputInfo() {
                  std::to_string(inputAttrs_[i].dims[2]) + "," +
                  std::to_string(inputAttrs_[i].dims[3]) + "]");
     }
-    
+
     for (int32_t i = 0; i < outputNum_; ++i) {
         LOG_INFO("Output " + std::to_string(i) + ": size=" + std::to_string(outputAttrs_[i].size) +
                  ", n_elems=" + std::to_string(outputAttrs_[i].n_elems) +
@@ -150,9 +150,9 @@ bool RknnAdapter::QueryInputOutputInfo() {
                  std::to_string(outputAttrs_[i].dims[2]) + "," +
                  std::to_string(outputAttrs_[i].dims[3]) + "]");
     }
-    
+
 #endif
-    
+
     return true;
 }
 
@@ -161,16 +161,16 @@ bool RknnAdapter::SetInputBuffer(const uint8_t* data, int32_t Size) {
         LOG_ERROR("RKNN adapter not initialized");
         return false;
     }
-    
+
     int32_t expectedSize = GetInputSize();
     if (Size != expectedSize) {
         LOG_ERROR("Input Size mismatch: expected " + std::to_string(expectedSize) +
                   ", got " + std::to_string(Size));
         return false;
     }
-    
+
 #ifdef RK3566_PLATFORM
-    
+
     inputs_.resize(inputNum_);
     for (int32_t i = 0; i < inputNum_; ++i) {
         inputs_[i].index = i;
@@ -187,23 +187,23 @@ bool RknnAdapter::SetInputBuffer(const uint8_t* data, int32_t Size) {
             inputs_[i].type = RKNN_TENSOR_UINT8;
         }
     }
-    
+
     std::memcpy(inputData_.data(), data, Size);
-    
+
     int32_t ret = rknn_inputs_set(rknnCtx_, inputNum_, inputs_.data());
     if (ret < 0) {
         LOG_ERROR("rknn_inputs_set failed: ret=" + std::to_string(ret));
         return false;
     }
-    
+
     LOG_DEBUG("Input buffer set: " + std::to_string(Size) + " bytes (NCHW format)");
-    
+
 #else
-    
+
     LOG_DEBUG("Input buffer set (stub mode): " + std::to_string(Size) + " bytes");
-    
+
 #endif
-    
+
     return true;
 }
 
@@ -212,9 +212,9 @@ bool RknnAdapter::Run() {
         LOG_ERROR("RKNN adapter not initialized");
         return false;
     }
-    
+
 #ifdef RK3566_PLATFORM
-    
+
     outputs_.resize(outputNum_);
     for (int32_t i = 0; i < outputNum_; ++i) {
         outputs_[i].want_float = 1;
@@ -235,15 +235,15 @@ bool RknnAdapter::Run() {
         LOG_ERROR("rknn_outputs_get failed: ret=" + std::to_string(ret));
         return false;
     }
-    
+
     LOG_DEBUG("RKNN inference completed successfully");
-    
+
 #else
-    
+
     LOG_DEBUG("RKNN stub mode: inference skipped");
-    
+
 #endif
-    
+
     return true;
 }
 
@@ -252,28 +252,28 @@ bool RknnAdapter::GetOutputBuffer(float* data, int32_t Size) {
         LOG_ERROR("RKNN adapter not initialized");
         return false;
     }
-    
+
 #ifdef RK3566_PLATFORM
-    
+
     int32_t outputSize = outputAttrs_[0].n_elems;
     if (Size != outputSize) {
         LOG_ERROR("Output Size mismatch: expected " + std::to_string(outputSize) +
                   ", got " + std::to_string(Size));
         return false;
     }
-    
+
     std::memcpy(data, outputData_.data(), Size * sizeof(float));
-    
+
     rknn_outputs_release(rknnCtx_, outputNum_, outputs_.data());
-    
+
     LOG_DEBUG("Output buffer retrieved: " + std::to_string(Size) + " floats");
-    
+
 #else
-    
+
     LOG_DEBUG("RKNN stub mode: output buffer Empty");
-    
+
 #endif
-    
+
     return true;
 }
 
@@ -281,7 +281,7 @@ int32_t RknnAdapter::GetOutputSize(int32_t index) const {
     if (index >= outputNum_) {
         return 0;
     }
-    
+
 #ifdef RK3566_PLATFORM
     return outputAttrs_[index].n_elems;
 #else
@@ -293,22 +293,22 @@ void RknnAdapter::release() {
     if (!initialized_) {
         return;
     }
-    
+
 #ifdef RK3566_PLATFORM
-    
+
     if (rknnCtx_) {
         rknn_destroy(rknnCtx_);
         rknnCtx_ = 0;
         LOG_INFO("RKNN context destroyed");
     }
-    
+
 #endif
-    
+
     inputData_.clear();
     outputData_.clear();
     inputs_.clear();
     outputs_.clear();
-    
+
     initialized_ = false;
     LOG_INFO("RKNN adapter released");
 }
@@ -319,21 +319,21 @@ bool RknnAdapter::LoadModelFile(const std::string& modelPath, std::vector<uint8_
         LOG_ERROR("Cannot open model file: " + modelPath);
         return false;
     }
-    
+
     std::streamsize Size = file.tellg();
     file.seekg(0, std::ios::beg);
-    
+
     modelData.resize(static_cast<size_t>(Size));
-    
+
     if (!file.read(reinterpret_cast<char*>(modelData.data()), Size)) {
         LOG_ERROR("Failed to read model file: " + modelPath);
         return false;
     }
-    
+
     file.close();
-    
+
     LOG_INFO("Model file loaded: " + modelPath + ", Size=" + std::to_string(Size));
-    
+
     return true;
 }
 

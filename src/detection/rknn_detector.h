@@ -2,6 +2,7 @@
 
 #include "detection/detector.h"
 #include "detection/yolo_postprocess.h"
+#include "detection/rknn_adapter.h"
 #include "common/config.h"
 #include "common/performance_stats.h"
 #include <opencv2/opencv.hpp>
@@ -102,8 +103,7 @@ private:
     std::vector<float> inputBuffer_;
     std::vector<float> outputBuffer_;
     
-    void* rknnCtx_;
-    bool useStubMode_;
+    std::unique_ptr<RknnAdapter> rknnAdapter_;
 };
 
 }

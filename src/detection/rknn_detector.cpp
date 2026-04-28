@@ -23,8 +23,7 @@ RknnDetector::RknnDetector(const LocalDetectionConfig& config)
     , inputWidth_(RKNN_MODEL_INPUT_WIDTH)
     , inputHeight_(RKNN_MODEL_INPUT_HEIGHT)
     , inputChannel_(3)
-    , rknnCtx_(nullptr)
-    , useStubMode_(true) {
+    , rknnAdapter_(nullptr) {
     
     postprocess_ = std::make_unique<YoloPostprocess>(
         config.modelType, config.confThreshold);
@@ -44,34 +43,40 @@ bool RknnDetector::Init() {
              ", conf_threshold=" + std::to_string(config_.confThreshold) +
              ", detect_interval=" + std::to_string(config_.detectInterval));
 
-    if (!LoadModel()) {
-        LOG_WARN("Failed to load RKNN model, using stub mode for testing");
-        return FallbackToStubMode(false);
+    rknnAdapter_ = std::make_unique<RknnAdapter>();
+    
+    if (!rknnAdapter_->Init(config_.modelPath)) {
+        LOG_WARN("Failed to initialize RKNN adapter, detector will return empty results");
+        initialized_ = true;
+        return true;
     }
-
-    if (!QueryModelInfo()) {
-        LOG_ERROR("Failed to query model info");
-        return FallbackToStubMode(true);
-    }
-
+    
+    inputWidth_ = rknnAdapter_->GetInputWidth();
+    inputHeight_ = rknnAdapter_->GetInputHeight();
+    inputChannel_ = rknnAdapter_->GetInputChannel();
+    
+    LOG_INFO("RKNN adapter initialized: input=" +
+             std::to_string(inputChannel_) + "x" +
+             std::to_string(inputHeight_) + "x" +
+             std::to_string(inputWidth_) + " (NCHW)");
+    
     if (!PrepareInputBuffers()) {
         LOG_ERROR("Failed to prepare input buffers");
-        return FallbackToStubMode(true);
+        return true;
     }
-
+    
     if (!PrepareOutputBuffers()) {
         LOG_ERROR("Failed to prepare output buffers");
-        return FallbackToStubMode(true);
+        return true;
     }
-
+    
+    QueryModelInfo();
+    
     modelLoaded_ = true;
-    useStubMode_ = false;
     initialized_ = true;
-
-    LOG_INFO("RKNN detector initialized successfully (NCHW input): " +
-             std::to_string(inputWidth_) + "x" + std::to_string(inputHeight_) +
-             "x" + std::to_string(inputChannel_));
-
+    
+    LOG_INFO("RKNN detector initialized successfully");
+    
     return true;
 }
 
@@ -79,36 +84,68 @@ bool RknnDetector::FallbackToStubMode(bool releaseBuffers) {
     if (releaseBuffers) {
         ReleaseBuffers();
     }
-    useStubMode_ = true;
     initialized_ = true;
     return true;
 }
 
 bool RknnDetector::LoadModel() {
-    std::ifstream file(config_.modelPath, std::ios::binary | std::ios::ate);
-    if (!file.is_open()) {
-        LOG_WARN("Model file not found: " + config_.modelPath + ", using stub mode");
+    if (!rknnAdapter_ || !rknnAdapter_->IsInitialized()) {
         return false;
     }
-    
-    std::streamsize Size = file.tellg();
-    file.close();
-    
-    if (Size == 0) {
-        LOG_WARN("Model file is Empty: " + config_.modelPath);
-        return false;
-    }
-    
-    LOG_INFO("Model file found: " + config_.modelPath + ", Size=" + std::to_string(Size) + " bytes");
-    
-    LOG_INFO("Note: RKNN model requires RKNN Runtime SDK on RK3566 platform");
-    LOG_INFO("      Input format: NCHW (Channel x Height x Width)");
-    LOG_INFO("      Stub mode will be used for testing on non-RK3566 platforms");
-    
-    return false;
+    return rknnAdapter_->IsInitialized();
 }
 
 bool RknnDetector::QueryModelInfo() {
+    if (!rknnAdapter_ || !rknnAdapter_->IsInitialized()) {
+        modelInfo_.version = 1;
+        modelInfo_.input_num = 1;
+        modelInfo_.output_num = 1;
+        
+        modelInfo_.inputs.resize(1);
+        modelInfo_.inputs[0].index = 0;
+        modelInfo_.inputs[0].Width = inputWidth_;
+        modelInfo_.inputs[0].Height = inputHeight_;
+        modelInfo_.inputs[0].channel = inputChannel_;
+        modelInfo_.inputs[0].format = 1;
+        modelInfo_.inputs[0].type = 0;
+        modelInfo_.inputs[0].Size = inputWidth_ * inputHeight_ * inputChannel_;
+        
+        modelInfo_.outputs.resize(1);
+        modelInfo_.outputs[0].index = 0;
+        modelInfo_.outputs[0].n_dims = 3;
+        
+        if (config_.modelType == "yolov5" || config_.modelType == "yolov3") {
+            modelInfo_.outputs[0].dims[0] = 1;
+            modelInfo_.outputs[0].dims[1] = 25200;
+            modelInfo_.outputs[0].dims[2] = 85;
+            modelInfo_.outputs[0].Size = 25200 * 85 * sizeof(float);
+        } else if (config_.modelType == "yolov8") {
+            modelInfo_.outputs[0].dims[0] = 1;
+            modelInfo_.outputs[0].dims[1] = 8400;
+            modelInfo_.outputs[0].dims[2] = 84;
+            modelInfo_.outputs[0].Size = 8400 * 84 * sizeof(float);
+        } else {
+            modelInfo_.outputs[0].dims[0] = 1;
+            modelInfo_.outputs[0].dims[1] = 25200;
+            modelInfo_.outputs[0].dims[2] = 85;
+            modelInfo_.outputs[0].Size = 25200 * 85 * sizeof(float);
+        }
+        
+        modelInfo_.outputs[0].want_float = 1;
+        
+        LOG_INFO("Model info (stub): input_num=" + std::to_string(modelInfo_.input_num) +
+                 ", output_num=" + std::to_string(modelInfo_.output_num) +
+                 ", input_format=NCHW" +
+                 ", output_size=" + std::to_string(modelInfo_.outputs[0].Size));
+        
+        return true;
+    }
+    
+    int32_t outputSize = rknnAdapter_->GetOutputSize(0);
+    if (outputSize <= 0) {
+        outputSize = 25200 * 85;
+    }
+    
     modelInfo_.version = 1;
     modelInfo_.input_num = 1;
     modelInfo_.output_num = 1;
@@ -125,29 +162,16 @@ bool RknnDetector::QueryModelInfo() {
     modelInfo_.outputs.resize(1);
     modelInfo_.outputs[0].index = 0;
     modelInfo_.outputs[0].n_dims = 3;
-    
-    if (config_.modelType == "yolov5" || config_.modelType == "yolov3") {
-        modelInfo_.outputs[0].dims[0] = 1;
-        modelInfo_.outputs[0].dims[1] = 25200;
-        modelInfo_.outputs[0].dims[2] = 85;
-        modelInfo_.outputs[0].Size = 25200 * 85 * sizeof(float);
-    } else if (config_.modelType == "yolov8") {
-        modelInfo_.outputs[0].dims[0] = 1;
-        modelInfo_.outputs[0].dims[1] = 8400;
-        modelInfo_.outputs[0].dims[2] = 84;
-        modelInfo_.outputs[0].Size = 8400 * 84 * sizeof(float);
-    } else {
-        modelInfo_.outputs[0].dims[0] = 1;
-        modelInfo_.outputs[0].dims[1] = 25200;
-        modelInfo_.outputs[0].dims[2] = 85;
-        modelInfo_.outputs[0].Size = 25200 * 85 * sizeof(float);
-    }
-    
+    modelInfo_.outputs[0].dims[0] = 1;
+    modelInfo_.outputs[0].dims[1] = outputSize / 85;
+    modelInfo_.outputs[0].dims[2] = 85;
+    modelInfo_.outputs[0].Size = outputSize * sizeof(float);
     modelInfo_.outputs[0].want_float = 1;
     
     LOG_INFO("Model info: input_num=" + std::to_string(modelInfo_.input_num) +
              ", output_num=" + std::to_string(modelInfo_.output_num) +
-             ", input_format=NCHW" +
+             ", input=" + std::to_string(inputChannel_) + "x" +
+             std::to_string(inputHeight_) + "x" + std::to_string(inputWidth_) +
              ", output_size=" + std::to_string(modelInfo_.outputs[0].Size));
     
     return true;
@@ -166,7 +190,20 @@ bool RknnDetector::PrepareInputBuffers() {
 }
 
 bool RknnDetector::PrepareOutputBuffers() {
-    int32_t outputSize = modelInfo_.outputs[0].Size / sizeof(float);
+    int32_t outputSize = 0;
+    
+    if (rknnAdapter_ && rknnAdapter_->IsInitialized()) {
+        outputSize = rknnAdapter_->GetOutputSize(0);
+    }
+    
+    if (outputSize <= 0) {
+        if (config_.modelType == "yolov8") {
+            outputSize = 8400 * 84;
+        } else {
+            outputSize = 25200 * 85;
+        }
+    }
+    
     outputBuffer_.resize(outputSize);
     
     LOG_INFO("Output buffer prepared: Size=" + std::to_string(outputSize) + " floats");
@@ -179,9 +216,9 @@ void RknnDetector::ReleaseBuffers() {
     outputBuffer_.clear();
     modelLoaded_ = false;
     
-    if (rknnCtx_) {
-        LOG_INFO("RKNN context would be released on RK3566 platform");
-        rknnCtx_ = nullptr;
+    if (rknnAdapter_) {
+        rknnAdapter_->release();
+        LOG_INFO("RKNN adapter released");
     }
 }
 
@@ -360,19 +397,49 @@ void RknnDetector::FillInputBuffer(const cv::Mat& preprocessed) {
 }
 
 std::vector<float> RknnDetector::RunInference(const cv::Mat& preprocessed) {
-    if (useStubMode_) {
-        LOG_DEBUG("Running inference in stub mode (no actual RKNN inference)");
+    if (!rknnAdapter_ || !rknnAdapter_->IsInitialized()) {
+        LOG_DEBUG("RKNN adapter not initialized, returning empty results");
         return {};
     }
     
-    FillInputBuffer(preprocessed);
+    cv::Mat floatMat;
+    preprocessed.convertTo(floatMat, CV_32F);
+    floatMat = floatMat / 255.0f;
     
-    LOG_DEBUG("RKNN inference would Run on RK3566 NPU here");
-    LOG_DEBUG("Input (NCHW): " + std::to_string(inputChannel_) + "x" +
-              std::to_string(inputHeight_) + "x" + std::to_string(inputWidth_));
-    LOG_DEBUG("Output: " + std::to_string(modelInfo_.outputs[0].Size) + " bytes");
+    std::vector<uint8_t> inputUint8(inputWidth_ * inputHeight_ * inputChannel_);
     
-    std::vector<float> outputs = ParseOutputs();
+    cv::Mat channels[3];
+    cv::split(preprocessed, channels);
+    
+    int32_t channelSize = inputWidth_ * inputHeight_;
+    for (int32_t c = 0; c < inputChannel_; ++c) {
+        int32_t offset = c * channelSize;
+        for (int32_t i = 0; i < channelSize; ++i) {
+            inputUint8[offset + i] = channels[c].data[i];
+        }
+    }
+    
+    if (!rknnAdapter_->SetInputBuffer(inputUint8.data(), inputUint8.size())) {
+        LOG_ERROR("Failed to set input buffer");
+        return {};
+    }
+    
+    if (!rknnAdapter_->Run()) {
+        LOG_ERROR("RKNN inference failed");
+        return {};
+    }
+    
+    std::vector<float> outputs;
+    int32_t outputSize = rknnAdapter_->GetOutputSize(0);
+    if (outputSize > 0) {
+        outputs.resize(outputSize);
+        if (!rknnAdapter_->GetOutputBuffer(outputs.data(), outputSize)) {
+            LOG_ERROR("Failed to get output buffer");
+            return {};
+        }
+    }
+    
+    LOG_DEBUG("RKNN inference completed: output_size=" + std::to_string(outputs.size()));
     
     return outputs;
 }

@@ -1,12 +1,29 @@
 #include "analysis/event_analyzer.h"
 #include "common/logger.h"
 #include <chrono>
+#include <filesystem>
 #include <sstream>
 #include <iomanip>
 
 namespace diff_det {
 
 namespace {
+
+const char* kOutputDir = "outputs";
+
+void SaveFrame(const cv::Mat& frame, const std::string& filename) {
+    try {
+        std::filesystem::create_directories(kOutputDir);
+        std::string path = std::string(kOutputDir) + "/" + filename;
+        if (cv::imwrite(path, frame)) {
+            LOG_INFO("Saved frame to: " + path);
+        } else {
+            LOG_ERROR("Failed to save frame: " + path);
+        }
+    } catch (const std::exception& e) {
+        LOG_ERROR("Exception saving frame: " + std::string(e.what()));
+    }
+}
 
 EventAnalysisMode ParseMode(const std::string& mode) {
     if (mode == "video") {
@@ -73,10 +90,12 @@ void EventAnalyzer::AnalyzeImage(const cv::Mat& frame,
 
     std::string eventId = generateEventId();
     eventCount_++;
-    
+
+    SaveFrame(frame, eventId + ".jpg");
+
     cv::Mat annotatedFrame = frame.clone();
     drawBoxes(annotatedFrame, boxes);
-    
+
     LOG_INFO("Event analysis (image): eventId=" + eventId +
              ", boxes=" + std::to_string(boxes.size()) +
              ", totalEvents=" + std::to_string(eventCount_));
@@ -96,12 +115,16 @@ void EventAnalyzer::AnalyzeVideo(const std::vector<cv::Mat>& frames,
 
     std::string eventId = generateEventId();
     eventCount_++;
-    
+
+    for (size_t i = 0; i < frames.size(); ++i) {
+        SaveFrame(frames[i], eventId + "_frame_" + std::to_string(i) + ".jpg");
+    }
+
     LOG_INFO("Event analysis (video): eventId=" + eventId +
              ", frames=" + std::to_string(frames.size()) +
              ", boxes=" + std::to_string(boxes.size()) +
              ", totalEvents=" + std::to_string(eventCount_));
-    
+
     cv::Mat annotatedFrame = frames[0].clone();
     drawBoxes(annotatedFrame, boxes);
     

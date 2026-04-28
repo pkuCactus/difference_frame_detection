@@ -14,7 +14,7 @@ camera_detection:
   timeout_ms: 3000
 
 local_detection:
-  model_path: "models/yolov5.rknn"
+  model_path: "models/yolov5s_relu.rknn"
   model_type: "yolov5"
   conf_threshold: 0.5
   detect_interval: 3
@@ -39,5 +39,5 @@ event_analysis:
   video_duration_sec: 5
 
 logging:
-  level: "INFO"
-  file_path: "/tmp/pipeline.log"
+  level: "DEBUG"
+  file_path: "outputs/pipeline.log"
