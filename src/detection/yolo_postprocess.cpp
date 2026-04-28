@@ -81,7 +81,8 @@ std::vector<BoundingBox> YoloPostprocess::ProcessYolov5(const std::vector<float>
         box = RestoreBox(box, scaleX, scaleY, offsetX, offsetY);
         boxes.push_back(box);
     }
-    
+
+    std::cout << "[POST] ProcessYolov5 raw boxes before NMS: " << boxes.size() << std::endl;
     return nms(boxes);
 }
 
@@ -130,7 +131,8 @@ std::vector<BoundingBox> YoloPostprocess::ProcessYolov8(const std::vector<float>
         box = RestoreBox(box, scaleX, scaleY, offsetX, offsetY);
         boxes.push_back(box);
     }
-    
+
+    std::cout << "[POST] ProcessYolov8 raw boxes before NMS: " << boxes.size() << std::endl;
     return nms(boxes);
 }
 
@@ -171,10 +173,12 @@ std::vector<BoundingBox> YoloPostprocess::ProcessRknnYolov5(
         }
 
         int32_t gridSize = static_cast<int32_t>(std::sqrt(output.size() / 255));
+        std::cout << "[POST] Layer " << i << ": output.size=" << output.size()
+                  << ", gridSize=" << gridSize << std::endl;
         if (gridSize * gridSize * 255 != static_cast<int32_t>(output.size())) {
-            LOG_WARN("Unexpected output size for layer " + std::to_string(i) +
-                     ": expected " + std::to_string(gridSize * gridSize * 255) +
-                     ", got " + std::to_string(output.size()));
+            std::cerr << "[POST ERROR] Unexpected output size for layer " << i
+                      << ": expected " << gridSize * gridSize * 255
+                      << ", got " << output.size() << std::endl;
             continue;
         }
 
@@ -251,6 +255,7 @@ std::vector<BoundingBox> YoloPostprocess::ProcessRknnYolov5(
         }
     }
 
+    std::cout << "[POST] ProcessRknnYolov5 raw boxes before NMS: " << boxes.size() << std::endl;
     return nms(boxes);
 }
 

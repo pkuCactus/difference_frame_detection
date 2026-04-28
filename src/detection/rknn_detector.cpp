@@ -46,19 +46,19 @@ bool RknnDetector::Init() {
     rknnAdapter_ = std::make_unique<RknnAdapter>();
     
     if (!rknnAdapter_->Init(config_.modelPath)) {
-        LOG_WARN("Failed to initialize RKNN adapter, detector will return empty results");
-        initialized_ = true;
-        return true;
+        std::cerr << "[RKNN ERROR] Adapter init failed, model=" << config_.modelPath << std::endl;
+        return false;
     }
-    
+
     inputWidth_ = rknnAdapter_->GetInputWidth();
     inputHeight_ = rknnAdapter_->GetInputHeight();
     inputChannel_ = rknnAdapter_->GetInputChannel();
-    
-    LOG_INFO("RKNN adapter initialized: input=" +
-             std::to_string(inputChannel_) + "x" +
-             std::to_string(inputHeight_) + "x" +
-             std::to_string(inputWidth_) + " (NCHW)");
+
+    std::cout << "[RKNN] Adapter init OK" << std::endl;
+    std::cout << "[RKNN] Input: " << inputChannel_ << "x" << inputHeight_ << "x" << inputWidth_ << std::endl;
+    std::cout << "[RKNN] Input type=" << rknnAdapter_->GetInputType()
+              << ", format=" << rknnAdapter_->GetInputFormat() << std::endl;
+    std::cout << "[RKNN] Output num=" << rknnAdapter_->GetOutputNum() << std::endl;
     
     if (!PrepareInputBuffers()) {
         LOG_ERROR("Failed to prepare input buffers");
@@ -259,6 +259,7 @@ std::vector<BoundingBox> RknnDetector::Detect(const cv::Mat& frame) {
 
     if (!outputs.empty()) {
         if (multiOutputBuffers_.size() > 1 && config_.modelType == "yolov5") {
+            std::cout << "[POST] Using ProcessRknnYolov5, outputs=" << multiOutputBuffers_.size() << std::endl;
             boxes = postprocess_->ProcessRknnYolov5(
                 multiOutputBuffers_,
                 lastFrameWidth_,
@@ -268,6 +269,7 @@ std::vector<BoundingBox> RknnDetector::Detect(const cv::Mat& frame) {
                 offsetX,
                 offsetY);
         } else {
+            std::cout << "[POST] Using Process (single output), outputs.size=" << outputs.size() << std::endl;
             boxes = postprocess_->Process(
                 outputs,
                 static_cast<int32_t>(outputs.size()),
@@ -280,8 +282,12 @@ std::vector<BoundingBox> RknnDetector::Detect(const cv::Mat& frame) {
                 offsetX,
                 offsetY);
         }
+    } else {
+        std::cout << "[POST] WARNING: outputs is empty!" << std::endl;
     }
-    
+
+    std::cout << "[POST] Boxes after NMS: " << boxes.size() << std::endl;
+
     if (perfStats_) {
         perfStats_->EndTimer("detector_postprocess");
     }
@@ -466,20 +472,26 @@ std::vector<float> RknnDetector::RunInference(const cv::Mat& preprocessed) {
         }
     }
 
+    std::cout << "[RKNN] SetInputBuffer OK, bytes="
+              << (isFp32 ? inputWidth_ * inputHeight_ * inputChannel_ * 4 : inputWidth_ * inputHeight_ * inputChannel_)
+              << std::endl;
+
     if (!rknnAdapter_->Run()) {
-        LOG_ERROR("RKNN inference failed");
+        std::cerr << "[RKNN ERROR] rknn_run failed" << std::endl;
         return {};
     }
 
     int32_t outputNum = rknnAdapter_->GetOutputNum();
     multiOutputBuffers_.resize(outputNum);
+    std::cout << "[RKNN] Output num=" << outputNum << std::endl;
 
     for (int32_t i = 0; i < outputNum; ++i) {
         int32_t outputSize = rknnAdapter_->GetOutputSize(i);
+        std::cout << "[RKNN] Output[" << i << "] size=" << outputSize << std::endl;
         if (outputSize > 0) {
             multiOutputBuffers_[i].resize(outputSize);
             if (!rknnAdapter_->GetOutputBuffer(i, multiOutputBuffers_[i].data(), outputSize)) {
-                LOG_ERROR("Failed to get output buffer for index " + std::to_string(i));
+                std::cerr << "[RKNN ERROR] GetOutputBuffer failed for index " << i << std::endl;
                 return {};
             }
         }
@@ -493,8 +505,33 @@ std::vector<float> RknnDetector::RunInference(const cv::Mat& preprocessed) {
         outputBuffer_ = outputs;
     }
 
-    LOG_DEBUG("RKNN inference completed: output_num=" + std::to_string(outputNum) +
-              ", output0_size=" + std::to_string(outputs.size()));
+    std::cout << "[RKNN] Inference OK, output0_size=" << outputs.size() << std::endl;
+    if (!outputs.empty()) {
+        std::cout << "[RKNN] Output[0..9]: ";
+        for (size_t i = 0; i < std::min(outputs.size(), size_t(10)); ++i) {
+            std::cout << outputs[i] << " ";
+        }
+        std::cout << std::endl;
+
+        // 打印最大置信度（YOLOv5格式：每85个值中第4个是obj_conf）
+        if (config_.modelType == "yolov5" || config_.modelType == "yolov3") {
+            int stride = 85;
+            float maxObjConf = 0.0f;
+            for (size_t i = 4; i < outputs.size(); i += stride) {
+                maxObjConf = std::max(maxObjConf, outputs[i]);
+            }
+            std::cout << "[RKNN] Max obj_conf=" << maxObjConf << std::endl;
+        } else if (config_.modelType == "yolov8") {
+            int stride = 84;
+            float maxClassConf = 0.0f;
+            for (size_t i = 4; i < outputs.size() && i + 80 < outputs.size(); i += stride) {
+                for (int c = 0; c < 80; ++c) {
+                    maxClassConf = std::max(maxClassConf, outputs[i + c]);
+                }
+            }
+            std::cout << "[RKNN] Max class_conf=" << maxClassConf << std::endl;
+        }
+    }
 
     return outputs;
 }
