@@ -36,8 +36,8 @@
 3. 加载图像：`cv::Mat frame = cv::imread(args.imagePath)`，失败则报错退出
 4. 执行推理：`std::vector<BoundingBox> boxes = detector.Detect(frame)`
 5. 终端打印检测结果：
-   - 检测到目标时：`Detected N persons: [x1,y1-x2,y2 conf=0.xx] ...`
-   - 未检测到目标时：`No objects detected`
+   - 检测到目标时：输出 `检测到 N 个目标`，随后逐行打印每个框的坐标和置信度
+   - 未检测到目标时：`未检测到目标`
 6. 复制原图，调用 `DrawBoundingBoxes(result, boxes)` 绘制检测框与置信度标签
 7. 生成输出文件名：`outputs/detect_<timestamp>_<basename>.jpg`
 8. 保存结果图：`cv::imwrite(outputPath, result)`
