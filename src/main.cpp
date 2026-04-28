@@ -2,6 +2,7 @@
 #include "common/config.h"
 #include "common/logger.h"
 #include "common/visualization.h"
+#include "common/image_loader.h"
 #include "rtsp/rtsp_validator.h"
 #include "rtsp/rtsp_client.h"
 #include "detection/rknn_detector.h"
@@ -251,6 +252,7 @@ int runDetectDebug(const CmdLineArgs& args) {
         cv::Mat frame = cv::imread(args.imagePath);
         if (frame.empty()) {
             std::cerr << "错误: 无法加载图像: " << args.imagePath << std::endl;
+            std::cerr << DiagnoseImageLoadFailure(args.imagePath) << std::endl;
             return 1;
         }
 

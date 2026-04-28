@@ -17,6 +17,7 @@ set(TEST_SOURCES
     test_rtsp_validator.cpp
     test_event_analyzer.cpp
     test_visualization.cpp
+    test_image_loader.cpp
     ${CMAKE_SOURCE_DIR}/src/common/config.cpp
     ${CMAKE_SOURCE_DIR}/src/common/logger.cpp
     ${CMAKE_SOURCE_DIR}/src/common/performance_stats.cpp
@@ -35,6 +36,7 @@ set(TEST_SOURCES
     ${CMAKE_SOURCE_DIR}/src/analysis/event_analyzer.cpp
     ${CMAKE_SOURCE_DIR}/src/utils/frame_queue.cpp
     ${CMAKE_SOURCE_DIR}/src/common/visualization.cpp
+    ${CMAKE_SOURCE_DIR}/src/common/image_loader.cpp
 )
 
 add_executable(difference_detection_tests ${TEST_SOURCES})

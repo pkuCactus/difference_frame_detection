@@ -72,6 +72,7 @@ set(SOURCES
     src/common/logger.cpp
     src/common/performance_stats.cpp
     src/common/visualization.cpp
+    src/common/image_loader.cpp
     src/core/state_machine.cpp
     src/core/pipeline.cpp
     src/rtsp/rtsp_client.cpp
