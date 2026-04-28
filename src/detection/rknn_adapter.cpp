@@ -21,23 +21,12 @@ RknnAdapter::~RknnAdapter() {
 }
 
 bool RknnAdapter::CheckPlatform() {
-#ifdef RK3566_PLATFORM
     LOG_INFO("Running on RK3566 platform with RKNN SDK");
     return true;
-#else
-    LOG_INFO("Not running on RK3566 platform, RKNN stub mode enabled");
-    return false;
-#endif
 }
 
 bool RknnAdapter::Init(const std::string& modelPath) {
     LOG_INFO("Initializing RKNN adapter with model: " + modelPath);
-
-    if (!CheckPlatform()) {
-        LOG_WARN("RK3566 platform not detected, using stub mode");
-        initialized_ = true;
-        return true;
-    }
 
     std::vector<uint8_t> modelData;
     if (!LoadModelFile(modelPath, modelData)) {
@@ -46,8 +35,6 @@ bool RknnAdapter::Init(const std::string& modelPath) {
     }
 
     LOG_INFO("Model loaded: Size=" + std::to_string(modelData.size()) + " bytes");
-
-#ifdef RK3566_PLATFORM
 
     int32_t ret = rknn_init(&rknnCtx_, modelData.data(), modelData.size(), 0, nullptr);
     if (ret < 0) {
@@ -124,10 +111,17 @@ bool RknnAdapter::Init(const std::string& modelPath) {
     }
 
     int32_t totalOutputSize = 0;
+    outputScales_.resize(outputNum_);
+    outputZps_.resize(outputNum_);
     for (int32_t i = 0; i < outputNum_; ++i) {
         totalOutputSize += outputAttrs_[i].n_elems;
+        outputScales_[i] = outputAttrs_[i].scale;
+        outputZps_[i] = outputAttrs_[i].zp;
         LOG_INFO("Model output[" + std::to_string(i) + "]: n_elems=" +
                  std::to_string(outputAttrs_[i].n_elems) +
+                 ", type=" + std::to_string(outputAttrs_[i].type) +
+                 ", scale=" + std::to_string(outputAttrs_[i].scale) +
+                 ", zp=" + std::to_string(outputAttrs_[i].zp) +
                  ", dims=[" + std::to_string(outputAttrs_[i].dims[0]) + "," +
                  std::to_string(outputAttrs_[i].dims[1]) + "," +
                  std::to_string(outputAttrs_[i].dims[2]) + "," +
@@ -161,17 +155,33 @@ bool RknnAdapter::Init(const std::string& modelPath) {
     outputs_.resize(outputNum_);
     float* outputPtr = outputData_.data();
     outputOffsets_.resize(outputNum_);
+    outputQuantizedBuffers_.resize(outputNum_);
     for (int32_t i = 0; i < outputNum_; ++i) {
-        outputs_[i].index = i;
-        outputs_[i].want_float = 1;
-        outputs_[i].is_prealloc = 1;
-        outputs_[i].buf = outputPtr;
-        outputs_[i].size = outputAttrs_[i].n_elems * sizeof(float);
-        outputOffsets_[i] = static_cast<int32_t>(outputPtr - outputData_.data());
-        outputPtr += outputAttrs_[i].n_elems;
-    }
+        bool isQuantized = (outputAttrs_[i].type == RKNN_TENSOR_INT8 ||
+                            outputAttrs_[i].type == RKNN_TENSOR_UINT8);
 
-#endif
+        outputs_[i].index = i;
+        outputs_[i].is_prealloc = 1;
+
+        if (isQuantized) {
+            // INT8/UINT8 模型：want_float=0，获取原始量化数据后手动反量化
+            outputs_[i].want_float = 0;
+            outputQuantizedBuffers_[i].resize(outputAttrs_[i].n_elems);
+            outputs_[i].buf = outputQuantizedBuffers_[i].data();
+            outputs_[i].size = outputAttrs_[i].n_elems * sizeof(int8_t);
+            LOG_INFO("Output[" + std::to_string(i) +
+                     "]: quantized mode, buf_size=" + std::to_string(outputs_[i].size) + " bytes");
+        } else {
+            // FP32/FP16 模型：want_float=1，RKNN 自动转为 float32
+            outputs_[i].want_float = 1;
+            outputs_[i].buf = outputPtr;
+            outputs_[i].size = outputAttrs_[i].n_elems * sizeof(float);
+            outputOffsets_[i] = static_cast<int32_t>(outputPtr - outputData_.data());
+            outputPtr += outputAttrs_[i].n_elems;
+            LOG_INFO("Output[" + std::to_string(i) +
+                     "]: float mode, buf_size=" + std::to_string(outputs_[i].size) + " bytes");
+        }
+    }
 
     initialized_ = true;
     return true;
@@ -182,8 +192,6 @@ bool RknnAdapter::QueryInputOutputInfo() {
         LOG_ERROR("RKNN adapter not initialized");
         return false;
     }
-
-#ifdef RK3566_PLATFORM
 
     for (int32_t i = 0; i < inputNum_; ++i) {
         LOG_INFO("Input " + std::to_string(i) + ": format=" +
@@ -205,8 +213,6 @@ bool RknnAdapter::QueryInputOutputInfo() {
                  std::to_string(outputAttrs_[i].dims[3]) + "]");
     }
 
-#endif
-
     return true;
 }
 
@@ -220,8 +226,6 @@ bool RknnAdapter::SetInputBuffer(const uint8_t* data, int32_t Size) {
         LOG_ERROR("Invalid input buffer: size=" + std::to_string(Size));
         return false;
     }
-
-#ifdef RK3566_PLATFORM
 
     int32_t expectedBytes = static_cast<int32_t>(inputData_.size());
     if (Size != expectedBytes) {
@@ -240,12 +244,6 @@ bool RknnAdapter::SetInputBuffer(const uint8_t* data, int32_t Size) {
 
     LOG_DEBUG("Input buffer set: " + std::to_string(Size) + " bytes");
 
-#else
-
-    LOG_DEBUG("Input buffer set (stub mode): " + std::to_string(Size) + " bytes");
-
-#endif
-
     return true;
 }
 
@@ -254,8 +252,6 @@ bool RknnAdapter::Run() {
         LOG_ERROR("RKNN adapter not initialized");
         return false;
     }
-
-#ifdef RK3566_PLATFORM
 
     int32_t ret = rknn_run(rknnCtx_, nullptr);
     if (ret < 0) {
@@ -271,12 +267,6 @@ bool RknnAdapter::Run() {
 
     LOG_DEBUG("RKNN inference completed successfully");
 
-#else
-
-    LOG_DEBUG("RKNN stub mode: inference skipped");
-
-#endif
-
     return true;
 }
 
@@ -285,8 +275,6 @@ bool RknnAdapter::GetOutputBuffer(int32_t index, float* data, int32_t Size) {
         LOG_ERROR("RKNN adapter not initialized");
         return false;
     }
-
-#ifdef RK3566_PLATFORM
 
     if (index >= outputNum_) {
         LOG_ERROR("Output index out of range: " + std::to_string(index));
@@ -300,44 +288,47 @@ bool RknnAdapter::GetOutputBuffer(int32_t index, float* data, int32_t Size) {
         return false;
     }
 
-    std::memcpy(data, outputData_.data() + outputOffsets_[index], Size * sizeof(float));
+    bool isQuantized = (outputAttrs_[index].type == RKNN_TENSOR_INT8 ||
+                        outputAttrs_[index].type == RKNN_TENSOR_UINT8);
 
-    LOG_DEBUG("Output buffer retrieved: index=" + std::to_string(index) +
-              ", size=" + std::to_string(Size) + " floats");
-
-#else
-
-    LOG_DEBUG("RKNN stub mode: output buffer Empty");
-
-#endif
+    if (isQuantized) {
+        // 手动反量化：float = (qnt - zp) * scale
+        const int8_t* qntData = outputQuantizedBuffers_[index].data();
+        float scale = outputScales_[index];
+        int32_t zp = outputZps_[index];
+        for (int32_t i = 0; i < Size; ++i) {
+            data[i] = (static_cast<float>(qntData[i]) - static_cast<float>(zp)) * scale;
+        }
+        LOG_DEBUG("Output buffer dequantized: index=" + std::to_string(index) +
+                  ", size=" + std::to_string(Size) + " floats, scale=" + std::to_string(scale) +
+                  ", zp=" + std::to_string(zp));
+    } else {
+        std::memcpy(data, outputData_.data() + outputOffsets_[index], Size * sizeof(float));
+        LOG_DEBUG("Output buffer retrieved: index=" + std::to_string(index) +
+                  ", size=" + std::to_string(Size) + " floats");
+    }
 
     return true;
 }
 
 void RknnAdapter::ReleaseOutputs() {
-#ifdef RK3566_PLATFORM
     if (rknnCtx_ && !outputs_.empty()) {
         rknn_outputs_release(rknnCtx_, outputNum_, outputs_.data());
         LOG_DEBUG("RKNN outputs released");
     }
-#endif
 }
 
 int32_t RknnAdapter::GetInputType() const {
-#ifdef RK3566_PLATFORM
     if (!inputAttrs_.empty()) {
         return inputAttrs_[0].type;
     }
-#endif
     return RKNN_TENSOR_UINT8;
 }
 
 int32_t RknnAdapter::GetInputFormat() const {
-#ifdef RK3566_PLATFORM
     if (!inputAttrs_.empty()) {
         return inputAttrs_[0].fmt;
     }
-#endif
     return RKNN_TENSOR_NHWC;
 }
 
@@ -345,12 +336,7 @@ int32_t RknnAdapter::GetOutputSize(int32_t index) const {
     if (index >= outputNum_) {
         return 0;
     }
-
-#ifdef RK3566_PLATFORM
     return outputAttrs_[index].n_elems;
-#else
-    return 0;
-#endif
 }
 
 void RknnAdapter::release() {
@@ -358,18 +344,17 @@ void RknnAdapter::release() {
         return;
     }
 
-#ifdef RK3566_PLATFORM
-
     if (rknnCtx_) {
         rknn_destroy(rknnCtx_);
         rknnCtx_ = 0;
         LOG_INFO("RKNN context destroyed");
     }
 
-#endif
-
     inputData_.clear();
     outputData_.clear();
+    outputQuantizedBuffers_.clear();
+    outputScales_.clear();
+    outputZps_.clear();
     inputs_.clear();
     outputs_.clear();
 

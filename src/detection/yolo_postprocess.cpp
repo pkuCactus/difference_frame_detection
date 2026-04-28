@@ -1,6 +1,7 @@
 #include "detection/yolo_postprocess.h"
 #include "common/logger.h"
 #include <algorithm>
+#include <iostream>
 
 namespace diff_det {
 
@@ -155,7 +156,9 @@ std::vector<BoundingBox> YoloPostprocess::ProcessRknnYolov5(
     float scaleX,
     float scaleY,
     int offsetX,
-    int offsetY) {
+    int offsetY,
+    int modelInputWidth,
+    int modelInputHeight) {
 
     std::vector<BoundingBox> boxes;
 
@@ -172,22 +175,46 @@ std::vector<BoundingBox> YoloPostprocess::ProcessRknnYolov5(
             continue;
         }
 
-        int32_t gridSize = static_cast<int32_t>(std::sqrt(output.size() / 255));
-        std::cout << "[POST] Layer " << i << ": output.size=" << output.size()
-                  << ", gridSize=" << gridSize << std::endl;
-        if (gridSize * gridSize * 255 != static_cast<int32_t>(output.size())) {
-            std::cerr << "[POST ERROR] Unexpected output size for layer " << i
-                      << ": expected " << gridSize * gridSize * 255
-                      << ", got " << output.size() << std::endl;
+        int32_t expectElems = static_cast<int32_t>(output.size());
+        if (expectElems % 255 != 0) {
+            std::cerr << "[POST ERROR] Output size not divisible by 255 for layer " << i
+                      << ": " << expectElems << std::endl;
             continue;
         }
 
-        int32_t stride = 0;
-        if (gridSize == 80 || gridSize == 52) stride = 8;
-        else if (gridSize == 40 || gridSize == 26) stride = 16;
-        else if (gridSize == 20 || gridSize == 13) stride = 32;
-        else {
-            LOG_WARN("Unknown grid size " + std::to_string(gridSize) + " for layer " + std::to_string(i));
+        int32_t totalPixels = expectElems / 255;
+        int32_t gridH = 0, gridW = 0, stride = 0;
+
+        // 优先用模型输入尺寸计算 grid，支持非正方形输入
+        if (modelInputWidth > 0 && modelInputHeight > 0) {
+            for (int32_t s : strides) {
+                int32_t gh = modelInputHeight / s;
+                int32_t gw = modelInputWidth / s;
+                if (gh * gw == totalPixels) {
+                    gridH = gh;
+                    gridW = gw;
+                    stride = s;
+                    break;
+                }
+            }
+        }
+
+        // fallback：假设正方形 grid
+        if (gridH == 0 || gridW == 0) {
+            int32_t gridSize = static_cast<int32_t>(std::sqrt(totalPixels));
+            if (gridSize * gridSize == totalPixels) {
+                gridH = gridSize;
+                gridW = gridSize;
+                if (gridSize == 80 || gridSize == 52) stride = 8;
+                else if (gridSize == 40 || gridSize == 26) stride = 16;
+                else if (gridSize == 20 || gridSize == 13) stride = 32;
+            }
+        }
+
+        if (gridH == 0 || gridW == 0 || stride == 0) {
+            std::cerr << "[POST ERROR] Cannot determine grid size for layer " << i
+                      << ": totalPixels=" << totalPixels
+                      << ", modelInput=" << modelInputWidth << "x" << modelInputHeight << std::endl;
             continue;
         }
 
@@ -196,29 +223,28 @@ std::vector<BoundingBox> YoloPostprocess::ProcessRknnYolov5(
         else if (stride == 16) anchorIdx = 1;
         else anchorIdx = 2;
 
-        int32_t gridPixels = gridSize * gridSize;
+        int32_t gridPixels = gridH * gridW;
 
-        for (int32_t gy = 0; gy < gridSize; ++gy) {
-            for (int32_t gx = 0; gx < gridSize; ++gx) {
+        std::cout << "[POST] Layer " << i << ": output.size=" << output.size()
+                  << ", grid=" << gridW << "x" << gridH
+                  << ", stride=" << stride << std::endl;
+
+        for (int32_t gy = 0; gy < gridH; ++gy) {
+            for (int32_t gx = 0; gx < gridW; ++gx) {
                 for (int32_t a = 0; a < 3; ++a) {
-                    int32_t pixelIdx = gy * gridSize + gx;
+                    int32_t pixelIdx = gy * gridW + gx;
                     int32_t baseC = a * 85;
+                    // RKNN YOLOv5 模型导出时已包含 sigmoid，直接取值即可
                     float x = output[(baseC + 0) * gridPixels + pixelIdx];
                     float y = output[(baseC + 1) * gridPixels + pixelIdx];
                     float w = output[(baseC + 2) * gridPixels + pixelIdx];
                     float h = output[(baseC + 3) * gridPixels + pixelIdx];
                     float objConf = output[(baseC + 4) * gridPixels + pixelIdx];
 
-                    x = 1.0f / (1.0f + std::exp(-x));
-                    y = 1.0f / (1.0f + std::exp(-y));
-                    w = 1.0f / (1.0f + std::exp(-w));
-                    h = 1.0f / (1.0f + std::exp(-h));
-                    objConf = 1.0f / (1.0f + std::exp(-objConf));
-
                     int classIdx = 0;
                     float maxClassConf = 0.0f;
                     for (int c = 0; c < NUM_CLASSES; ++c) {
-                        float classConf = 1.0f / (1.0f + std::exp(-output[(baseC + 5 + c) * gridPixels + pixelIdx]));
+                        float classConf = output[(baseC + 5 + c) * gridPixels + pixelIdx];
                         if (classConf > maxClassConf) {
                             maxClassConf = classConf;
                             classIdx = c;

@@ -3,10 +3,9 @@ cmake_minimum_required(VERSION 3.14)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(FetchDeps)
 
-option(RK3566_PLATFORM "Build for RK3566 platform with RKNN SDK (local build on device)" OFF)
-option(ANDROID_BUILD "Build for Android platform using NDK (cross-compile)" OFF)
+# 默认只支持 RK3566 平台（Android NDK 交叉编译）
+option(RK3566_PLATFORM "Build for RK3566 platform with RKNN SDK (cross-compile)" ON)
 
-# RK3566 平台使用交叉编译，依赖 Android NDK
 if(RK3566_PLATFORM)
     include(DownloadNDK)
     set(CMAKE_TOOLCHAIN_FILE "${ANDROID_NDK_DIR}/build/cmake/android.toolchain.cmake" CACHE FILEPATH "" FORCE)

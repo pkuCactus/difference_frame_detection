@@ -6,77 +6,9 @@
 
 namespace diff_det {
 
-#ifdef RK3566_PLATFORM
-
 #include <rknn_api.h>
 
 #define RKNN_SDK_VERSION "RKNN-SDK-for-RK3566"
-
-#else
-
-#define RKNN_SDK_VERSION "Stub-Mode"
-
-typedef uint64_t rknn_context;
-
-enum rknn_tensor_format {
-    RKNN_TENSOR_FORMAT_AUTO = 0,
-    RKNN_TENSOR_FORMAT_NCHW = 1,
-    RKNN_TENSOR_FORMAT_NHWC = 2,
-};
-
-enum rknn_tensor_type {
-    RKNN_TENSOR_TYPE_AUTO = 0,
-    RKNN_TENSOR_TYPE_FLOAT32 = 1,
-    RKNN_TENSOR_TYPE_FLOAT16 = 2,
-    RKNN_TENSOR_TYPE_INT8 = 3,
-    RKNN_TENSOR_TYPE_UINT8 = 4,
-};
-
-enum rknn_tensor_qnt_type {
-    RKNN_TENSOR_QNT_TYPE_NONE = 0,
-    RKNN_TENSOR_QNT_TYPE_AFFINE = 1,
-};
-
-struct rknn_tensor_attr {
-    int32_t index;
-    int32_t n_dims;
-    int32_t dims[4];
-    int32_t n_elems;
-    int32_t Size;
-    rknn_tensor_format fmt;
-    rknn_tensor_type type;
-    rknn_tensor_qnt_type qnt_type;
-    int8_t fl;
-    int32_t zp;
-    float scale;
-    char name[16];
-};
-
-struct rknn_input {
-    int32_t index;
-    int32_t buf;
-    int32_t pass_through;
-    rknn_tensor_format fmt;
-    rknn_tensor_type type;
-};
-
-struct rknn_output {
-    int32_t index;
-    int32_t want_float;
-    int32_t buf;
-    rknn_tensor_format fmt;
-    rknn_tensor_type type;
-};
-
-// 兼容 RKNN SDK 的宏命名
-#define RKNN_TENSOR_NCHW RKNN_TENSOR_FORMAT_NCHW
-#define RKNN_TENSOR_NHWC RKNN_TENSOR_FORMAT_NHWC
-#define RKNN_TENSOR_FLOAT32 RKNN_TENSOR_TYPE_FLOAT32
-#define RKNN_TENSOR_FLOAT16 RKNN_TENSOR_TYPE_FLOAT16
-#define RKNN_TENSOR_INT8 RKNN_TENSOR_TYPE_INT8
-#define RKNN_TENSOR_UINT8 RKNN_TENSOR_TYPE_UINT8
-
-#endif
 
 class RknnAdapter {
 public:
@@ -97,9 +29,13 @@ public:
     int32_t GetInputType() const;
     int32_t GetInputFormat() const;
     
+    int32_t GetInputNum() const { return inputNum_; }
     int32_t GetOutputNum() const { return outputNum_; }
     int32_t GetOutputSize(int32_t index) const;
-    
+
+    const std::vector<rknn_tensor_attr>& GetInputAttrs() const { return inputAttrs_; }
+    const std::vector<rknn_tensor_attr>& GetOutputAttrs() const { return outputAttrs_; }
+
     void release();
     
     bool IsInitialized() const { return initialized_; }
@@ -127,6 +63,11 @@ private:
 
     std::vector<uint8_t> inputData_;
     std::vector<float> outputData_;
+
+    // INT8/UINT8 量化输出 buffer 和参数，FP16/FP32 时不使用
+    std::vector<std::vector<int8_t>> outputQuantizedBuffers_;
+    std::vector<float> outputScales_;
+    std::vector<int32_t> outputZps_;
 };
 
 }

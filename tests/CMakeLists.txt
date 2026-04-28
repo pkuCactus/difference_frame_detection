@@ -18,6 +18,7 @@ set(TEST_SOURCES
     test_event_analyzer.cpp
     test_visualization.cpp
     test_image_loader.cpp
+    test_yolo_postprocess.cpp
     ${CMAKE_SOURCE_DIR}/src/common/config.cpp
     ${CMAKE_SOURCE_DIR}/src/common/logger.cpp
     ${CMAKE_SOURCE_DIR}/src/common/performance_stats.cpp

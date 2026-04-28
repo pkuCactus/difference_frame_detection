@@ -32,7 +32,9 @@ public:
         float scaleX,
         float scaleY,
         int offsetX,
-        int offsetY);
+        int offsetY,
+        int modelInputWidth = 0,
+        int modelInputHeight = 0);
 
     void SetConfThreshold(float threshold) { confThreshold_ = threshold; }
     void SetNmsThreshold(float threshold) { nmsThreshold_ = threshold; }

@@ -4,6 +4,8 @@
 #include <fstream>
 #include <cstring>
 #include <iomanip>
+#include <iostream>
+#include <sstream>
 
 namespace diff_det {
 
@@ -80,14 +82,6 @@ bool RknnDetector::Init() {
     return true;
 }
 
-bool RknnDetector::FallbackToStubMode(bool releaseBuffers) {
-    if (releaseBuffers) {
-        ReleaseBuffers();
-    }
-    initialized_ = true;
-    return true;
-}
-
 bool RknnDetector::LoadModel() {
     if (!rknnAdapter_ || !rknnAdapter_->IsInitialized()) {
         return false;
@@ -97,83 +91,54 @@ bool RknnDetector::LoadModel() {
 
 bool RknnDetector::QueryModelInfo() {
     if (!rknnAdapter_ || !rknnAdapter_->IsInitialized()) {
-        modelInfo_.version = 1;
-        modelInfo_.input_num = 1;
-        modelInfo_.output_num = 1;
-        
-        modelInfo_.inputs.resize(1);
-        modelInfo_.inputs[0].index = 0;
-        modelInfo_.inputs[0].Width = inputWidth_;
-        modelInfo_.inputs[0].Height = inputHeight_;
-        modelInfo_.inputs[0].channel = inputChannel_;
-        modelInfo_.inputs[0].format = 1;
-        modelInfo_.inputs[0].type = 0;
-        modelInfo_.inputs[0].Size = inputWidth_ * inputHeight_ * inputChannel_;
-        
-        modelInfo_.outputs.resize(1);
-        modelInfo_.outputs[0].index = 0;
-        modelInfo_.outputs[0].n_dims = 3;
-        
-        if (config_.modelType == "yolov5" || config_.modelType == "yolov3") {
-            modelInfo_.outputs[0].dims[0] = 1;
-            modelInfo_.outputs[0].dims[1] = 25200;
-            modelInfo_.outputs[0].dims[2] = 85;
-            modelInfo_.outputs[0].Size = 25200 * 85 * sizeof(float);
-        } else if (config_.modelType == "yolov8") {
-            modelInfo_.outputs[0].dims[0] = 1;
-            modelInfo_.outputs[0].dims[1] = 8400;
-            modelInfo_.outputs[0].dims[2] = 84;
-            modelInfo_.outputs[0].Size = 8400 * 84 * sizeof(float);
-        } else {
-            modelInfo_.outputs[0].dims[0] = 1;
-            modelInfo_.outputs[0].dims[1] = 25200;
-            modelInfo_.outputs[0].dims[2] = 85;
-            modelInfo_.outputs[0].Size = 25200 * 85 * sizeof(float);
-        }
-        
-        modelInfo_.outputs[0].want_float = 1;
-        
-        LOG_INFO("Model info (stub): input_num=" + std::to_string(modelInfo_.input_num) +
-                 ", output_num=" + std::to_string(modelInfo_.output_num) +
-                 ", input_format=NCHW" +
-                 ", output_size=" + std::to_string(modelInfo_.outputs[0].Size));
-        
-        return true;
+        LOG_ERROR("RKNN adapter not initialized, cannot query model info");
+        return false;
     }
-    
-    int32_t outputSize = rknnAdapter_->GetOutputSize(0);
-    if (outputSize <= 0) {
-        outputSize = 25200 * 85;
-    }
-    
+
     modelInfo_.version = 1;
-    modelInfo_.input_num = 1;
-    modelInfo_.output_num = 1;
-    
-    modelInfo_.inputs.resize(1);
-    modelInfo_.inputs[0].index = 0;
-    modelInfo_.inputs[0].Width = inputWidth_;
-    modelInfo_.inputs[0].Height = inputHeight_;
-    modelInfo_.inputs[0].channel = inputChannel_;
-    modelInfo_.inputs[0].format = 1;
-    modelInfo_.inputs[0].type = 0;
-    modelInfo_.inputs[0].Size = inputWidth_ * inputHeight_ * inputChannel_;
-    
-    modelInfo_.outputs.resize(1);
-    modelInfo_.outputs[0].index = 0;
-    modelInfo_.outputs[0].n_dims = 3;
-    modelInfo_.outputs[0].dims[0] = 1;
-    modelInfo_.outputs[0].dims[1] = outputSize / 85;
-    modelInfo_.outputs[0].dims[2] = 85;
-    modelInfo_.outputs[0].Size = outputSize * sizeof(float);
-    modelInfo_.outputs[0].want_float = 1;
-    
-    LOG_INFO("Model info: input_num=" + std::to_string(modelInfo_.input_num) +
-             ", output_num=" + std::to_string(modelInfo_.output_num) +
-             ", input=" + std::to_string(inputChannel_) + "x" +
-             std::to_string(inputHeight_) + "x" + std::to_string(inputWidth_) +
-             ", output_size=" + std::to_string(modelInfo_.outputs[0].Size));
-    
+    modelInfo_.input_num = rknnAdapter_->GetInputNum();
+    modelInfo_.output_num = rknnAdapter_->GetOutputNum();
+
+    const auto& inputAttrs = rknnAdapter_->GetInputAttrs();
+    modelInfo_.inputs.resize(modelInfo_.input_num);
+    for (int32_t i = 0; i < modelInfo_.input_num; ++i) {
+        modelInfo_.inputs[i].index = static_cast<int32_t>(inputAttrs[i].index);
+        modelInfo_.inputs[i].Width = inputWidth_;
+        modelInfo_.inputs[i].Height = inputHeight_;
+        modelInfo_.inputs[i].channel = inputChannel_;
+        modelInfo_.inputs[i].format = static_cast<int32_t>(inputAttrs[i].fmt);
+        modelInfo_.inputs[i].type = static_cast<int32_t>(inputAttrs[i].type);
+        modelInfo_.inputs[i].Size = static_cast<int32_t>(inputAttrs[i].size);
+    }
+
+    const auto& outputAttrs = rknnAdapter_->GetOutputAttrs();
+    modelInfo_.outputs.resize(modelInfo_.output_num);
+    for (int32_t i = 0; i < modelInfo_.output_num; ++i) {
+        modelInfo_.outputs[i].index = static_cast<int32_t>(outputAttrs[i].index);
+        modelInfo_.outputs[i].Size = static_cast<int32_t>(outputAttrs[i].size);
+        modelInfo_.outputs[i].want_float = 1;
+        modelInfo_.outputs[i].fmt = static_cast<int32_t>(outputAttrs[i].fmt);
+        modelInfo_.outputs[i].type = static_cast<int32_t>(outputAttrs[i].type);
+        modelInfo_.outputs[i].n_dims = static_cast<int32_t>(outputAttrs[i].n_dims);
+        for (int32_t d = 0; d < 4; ++d) {
+            modelInfo_.outputs[i].dims[d] = static_cast<int32_t>(outputAttrs[i].dims[d]);
+        }
+    }
+
+    std::ostringstream oss;
+    oss << "Model info: input_num=" << modelInfo_.input_num
+        << ", output_num=" << modelInfo_.output_num
+        << ", input=" << inputChannel_ << "x" << inputHeight_ << "x" << inputWidth_;
+    for (int32_t i = 0; i < modelInfo_.output_num; ++i) {
+        oss << ", output[" << i << "]dims=[";
+        for (int32_t d = 0; d < modelInfo_.outputs[i].n_dims; ++d) {
+            oss << modelInfo_.outputs[i].dims[d];
+            if (d + 1 < modelInfo_.outputs[i].n_dims) oss << ",";
+        }
+        oss << "]";
+    }
+    LOG_INFO(oss.str());
+
     return true;
 }
 
@@ -267,7 +232,9 @@ std::vector<BoundingBox> RknnDetector::Detect(const cv::Mat& frame) {
                 scaleX,
                 scaleY,
                 offsetX,
-                offsetY);
+                offsetY,
+                inputWidth_,
+                inputHeight_);
         } else {
             std::cout << "[POST] Using Process (single output), outputs.size=" << outputs.size() << std::endl;
             boxes = postprocess_->Process(
@@ -367,12 +334,15 @@ cv::Mat RknnDetector::Preprocess(const cv::Mat& frame,
     
     cv::Mat resized;
     cv::resize(frame, resized, cv::Size(newWidth, newHeight), 0, 0, cv::INTER_LINEAR);
-    
+
+    cv::Mat rgbResized;
+    cv::cvtColor(resized, rgbResized, cv::COLOR_BGR2RGB);
+
     cv::Mat letterbox(inputHeight_, inputWidth_, CV_8UC3, cv::Scalar(114, 114, 114));
-    
+
     if (newWidth > 0 && newHeight > 0) {
         cv::Rect roi(offsetX, offsetY, newWidth, newHeight);
-        resized.copyTo(letterbox(roi));
+        rgbResized.copyTo(letterbox(roi));
     }
     
     LOG_DEBUG("Preprocess: original=" + std::to_string(frame.cols) + "x" + std::to_string(frame.rows) +
