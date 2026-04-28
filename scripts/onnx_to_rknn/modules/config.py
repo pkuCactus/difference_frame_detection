@@ -88,10 +88,11 @@ CHIP_PLATFORMS = {
 }
 
 QUANTIZED_DTYPES = {
-    "asymmetric_quantized-u8": "非对称量化 uint8 (推荐)",
-    "asymmetric_quantized-i8": "非对称量化 int8",
-    "dynamic_fixed_point-8": "动态定点 8bit",
-    "dynamic_fixed_point-16": "动态定点 16bit",
+    "w8a8": "W8A8 量化 (权重8位,激活8位,推荐)",
+    "w8a16": "W8A16 量化 (权重8位,激活16位)",
+    "w16a16i": "W16A16 整数量化",
+    "w16a16i_dfp": "W16A16 定点浮点量化",
+    "w4a16": "W4A16 量化 (权重4位,激活16位)",
 }
 
 QUANTIZED_ALGORITHMS = {

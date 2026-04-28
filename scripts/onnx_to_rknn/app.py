@@ -109,7 +109,7 @@ def convert_direct():
             pass
 
     config.do_quantization = request.form.get("do_quantization") == "on"
-    config.quantized_dtype = request.form.get("quantized_dtype", "asymmetric_quantized-u8")
+    config.quantized_dtype = request.form.get("quantized_dtype", "w8a8")
     config.quantized_algorithm = request.form.get("quantized_algorithm", "normal")
     config.dataset_path = _resolve_dataset_path(request.form.get("dataset_path", ""))
     config.optimization_level = request.form.get("optimization_level", type=int, default=2)

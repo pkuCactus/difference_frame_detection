@@ -75,14 +75,27 @@ def convert_onnx_to_rknn(
             rknn_config["std_values"] = std_values
             print(f"[LOG] 标准差归一化: {std_values}")
             
-        # 量化参数
+        # 量化参数 - RKNN Toolkit 2 支持的量化类型: w8a8, w8a16, w16a16i, w16a16i_dfp, w4a16
         do_quantization = config.get("do_quantization", False)
         if do_quantization:
-            quantized_dtype = config.get("quantized_dtype", "asymmetric_quantized-u8")
+            # 旧版量化类型映射到RKNN Toolkit 2格式
+            old_to_new_dtype = {
+                "asymmetric_quantized-u8": "w8a8",
+                "asymmetric_quantized-i8": "w8a8",
+                "quantized-u8": "w8a8",
+                "quantized-i8": "w8a8",
+                "w8a8": "w8a8",
+                "w8a16": "w8a16",
+                "w16a16i": "w16a16i",
+                "w16a16i_dfp": "w16a16i_dfp",
+                "w4a16": "w4a16",
+            }
+            quantized_dtype_input = config.get("quantized_dtype", "w8a8")
+            quantized_dtype = old_to_new_dtype.get(quantized_dtype_input, "w8a8")
             quantized_algorithm = config.get("quantized_algorithm", "normal")
             rknn_config["quantized_dtype"] = quantized_dtype
             rknn_config["quantized_algorithm"] = quantized_algorithm
-            print(f"[LOG] 量化类型: {quantized_dtype}")
+            print(f"[LOG] 量化类型: {quantized_dtype} (输入: {quantized_dtype_input})")
             print(f"[LOG] 量化算法: {quantized_algorithm}")
             
         # 优化参数

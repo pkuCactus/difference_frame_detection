@@ -18,7 +18,7 @@ class ConversionConfig:
     std_values: Optional[list[float]] = None
     input_dtype: str = "float32"
     do_quantization: bool = False
-    quantized_dtype: str = "asymmetric_quantized-u8"
+    quantized_dtype: str = "w8a8"
     quantized_algorithm: str = "normal"
     dataset_path: Optional[str] = None
     optimization_level: int = 2
