@@ -41,6 +41,7 @@ add_subdirectory(third-party/yaml-cpp)
 # nlohmann/json（header-only 库）
 include(BuildJson)
 
+include(BuildFFmpeg)
 include(BuildOpenCV)
 
 # CURL：本地编译用系统库，交叉编译时自己编译
@@ -76,7 +77,7 @@ set(SOURCES
 )
 
 add_executable(difference_detection src/main.cpp ${SOURCES})
-add_dependencies(difference_detection opencv_external ${CURL_EXTERNAL_DEPS})
+add_dependencies(difference_detection opencv_external ffmpeg_external ${CURL_EXTERNAL_DEPS})
 
 target_include_directories(difference_detection PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -91,21 +92,28 @@ endif()
 
 set(ANDROID_SYS_LIBS "")
 if(ANDROID)
-    set(ANDROID_SYS_LIBS log)
+    set(ANDROID_SYS_LIBS log mediandk)
 endif()
 
 if(ANDROID)
     target_link_options(difference_detection PRIVATE -Wl,--allow-shlib-undefined)
 endif()
 
+set(ANDROID_CXX_LIB "")
+if(ANDROID)
+    set(ANDROID_CXX_LIB c++_shared)
+endif()
+
 target_link_libraries(difference_detection PRIVATE
     ${OpenCV_LIBS}
+    ${FFMPEG_LIBRARIES}
     ${CURL_LIBRARIES}
     yaml-cpp
     nlohmann_json::nlohmann_json
     z
     ${THREAD_LIB}
     ${ANDROID_SYS_LIBS}
+    ${ANDROID_CXX_LIB}
 )
 
 if(RK3566_PLATFORM)
@@ -166,4 +174,41 @@ if(BUILD_TESTS)
         find_package(GTest REQUIRED)
     endif()
     add_subdirectory(tests)
+endif()
+
+# 自动打包部署文件
+set(DEPLOY_DIR "${CMAKE_BINARY_DIR}/deploy")
+
+add_custom_command(TARGET difference_detection POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${DEPLOY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:difference_detection> ${DEPLOY_DIR}/
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FFMPEG_LIBRARIES} ${DEPLOY_DIR}/
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${OPENCV_INSTALL_DIR}/sdk/native/libs/${ANDROID_ABI}/libopencv_videoio_ffmpeg.so ${DEPLOY_DIR}/
+    COMMENT "Deploying binaries and libraries to ${DEPLOY_DIR}"
+)
+
+if(ANDROID AND ANDROID_NDK_DIR)
+    if(ANDROID_ABI STREQUAL "arm64-v8a")
+        set(ANDROID_CXX_TRIPLE "aarch64-linux-android")
+    elseif(ANDROID_ABI STREQUAL "armeabi-v7a")
+        set(ANDROID_CXX_TRIPLE "arm-linux-androideabi")
+    elseif(ANDROID_ABI STREQUAL "x86")
+        set(ANDROID_CXX_TRIPLE "i686-linux-android")
+    elseif(ANDROID_ABI STREQUAL "x86_64")
+        set(ANDROID_CXX_TRIPLE "x86_64-linux-android")
+    else()
+        set(ANDROID_CXX_TRIPLE "${ANDROID_ABI}")
+    endif()
+    set(ANDROID_CXX_SHARED "${ANDROID_NDK_DIR}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/${ANDROID_CXX_TRIPLE}/libc++_shared.so")
+    if(EXISTS ${ANDROID_CXX_SHARED})
+        add_custom_command(TARGET difference_detection POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${ANDROID_CXX_SHARED} ${DEPLOY_DIR}/
+        )
+    endif()
+endif()
+
+if(RKNN_LIBRARY)
+    add_custom_command(TARGET difference_detection POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RKNN_LIBRARY} ${DEPLOY_DIR}/
+    )
 endif()

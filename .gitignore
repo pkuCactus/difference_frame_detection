@@ -88,3 +88,14 @@ third-party/android-ndk-*/
 # curl downloads
 third-party/curl-*.tar.gz
 third-party/curl-*/
+
+# FFmpeg downloads
+third-party/ffmpeg-*.tar.gz
+third-party/ffmpeg-*/
+
+# json local copy (downloaded)
+third-party/json/
+third-party/_deps/
+
+# MediaMTX tar.gz
+scripts/*.tar.gz

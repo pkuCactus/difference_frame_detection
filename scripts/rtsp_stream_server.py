@@ -65,12 +65,14 @@ def _terminate_process(process: Optional[subprocess.Popen], timeout: float = STA
 
 
 class MediaMTXManager:
-    def __init__(self, install_dir: Path = MEDIAMTX_DIR):
+    def __init__(self, install_dir: Path = MEDIAMTX_DIR, download_dir: Optional[Path] = None):
         self.install_dir = install_dir
+        self.download_dir = download_dir or Path(__file__).parent
         self.process = None
         suffix = self._detect_platform()
         self.executable_path = self.install_dir / "mediamtx"
         self.tar_file_name = f"mediamtx_{MEDIAMTX_VERSION}_{suffix}.tar.gz"
+        self.tar_path = self.download_dir / self.tar_file_name
         self.download_url = (
             f"https://github.com/bluenviron/mediamtx/releases/download/"
             f"{MEDIAMTX_VERSION}/{self.tar_file_name}"
@@ -98,16 +100,23 @@ class MediaMTXManager:
             print(f"MediaMTX已安装: {self.executable_path}")
             return True
 
-        print(f"正在下载MediaMTX {MEDIAMTX_VERSION} ...")
         self.install_dir.mkdir(parents=True, exist_ok=True)
-        tar_path = self.install_dir / self.tar_file_name
+
+        if self.tar_path.exists():
+            print(f"发现本地安装包: {self.tar_path}")
+        else:
+            print(f"正在下载MediaMTX {MEDIAMTX_VERSION} ...")
+            try:
+                print(f"下载地址: {self.download_url}")
+                urllib.request.urlretrieve(self.download_url, self.tar_path)
+                print(f"下载完成，已保存到: {self.tar_path}")
+            except (urllib.error.URLError, OSError) as e:
+                print(f"下载失败: {e}")
+                return False
 
         try:
-            print(f"下载地址: {self.download_url}")
-            urllib.request.urlretrieve(self.download_url, tar_path)
-            print("下载完成，正在解压...")
-
-            with tarfile.open(tar_path, "r:gz") as tar:
+            print("正在解压...")
+            with tarfile.open(self.tar_path, "r:gz") as tar:
                 for member in tar.getmembers():
                     memberPath = self.install_dir / member.name
                     try:
@@ -119,12 +128,9 @@ class MediaMTXManager:
             self.executable_path.chmod(0o755)
             print(f"MediaMTX安装成功: {self.executable_path}")
             return True
-        except (urllib.error.URLError, OSError, tarfile.TarError) as e:
-            print(f"下载失败: {e}")
+        except (OSError, tarfile.TarError) as e:
+            print(f"解压失败: {e}")
             return False
-        finally:
-            if tar_path.exists():
-                tar_path.unlink()
 
     def _wait_for_startup(self) -> bool:
         deadline = time.perf_counter() + STARTUP_TIMEOUT_SEC

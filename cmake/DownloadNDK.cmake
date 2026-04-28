@@ -76,6 +76,7 @@ if(EXISTS "${NDK_CLANG_PATH}")
     endif()
 endif()
 
+set(ANDROID_STL "c++_shared" CACHE STRING "" FORCE)
 set(CMAKE_TOOLCHAIN_FILE "${ANDROID_NDK_DIR}/build/cmake/android.toolchain.cmake" CACHE FILEPATH "" FORCE)
 
 # 将 NDK 工具链目录加入 PATH，确保 clang++ 能找到 ld.lld 等工具

@@ -1,9 +1,9 @@
 rtsp:
-  url: "rtsp://192.168.1.100:554/stream"
+  url: "rtsp://10.42.0.1:8554/stream1"
   reconnect_interval_ms: 3000
 
 camera_detection:
-  enabled: true
+  enabled: false
   protocol: "REST"
   endpoint: "http://192.168.1.100/api/detection"
   poll_interval_ms: 100
@@ -14,8 +14,8 @@ camera_detection:
   timeout_ms: 3000
 
 local_detection:
-  model_path: "/data/models/yolov8.rknn"
-  model_type: "yolov8"
+  model_path: "models/yolov5.rknn"
+  model_type: "yolov5"
   conf_threshold: 0.5
   detect_interval: 3
   timeout_ms: 500
