@@ -41,5 +41,5 @@ event_analysis:
   video_duration_sec: 5
 
 logging:
-  level: "DEBUG"
+  level: "INFO"
   file_path: "outputs/pipeline.log"

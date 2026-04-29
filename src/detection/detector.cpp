@@ -286,9 +286,9 @@ void Detector::PostProcess(const cv::Mat& frame, const std::vector<rknn_output> 
             }
         }
     }
-    LOG_INFO("Total boxes before nms: " + std::to_string(boxes.size()));
+    LOG_DEBUG("Total boxes before nms: " + std::to_string(boxes.size()));
     boxes = Nms(boxes);
-    LOG_INFO("Boxes remain after nms: " + std::to_string(boxes.size()));
+    LOG_DEBUG("Boxes remain after nms: " + std::to_string(boxes.size()));
 }
 
 std::vector<BoundingBox> Detector::Nms(std::vector<BoundingBox>& boxes)
@@ -338,6 +338,11 @@ std::vector<BoundingBox> Detector::Detect(const cv::Mat& frame)
         LOG_ERROR("Detector not initialized, cannot perform detection");
         return boxes;
     }
+    auto startTime = std::chrono::high_resolution_clock::now();
+
+    if (perfStats_) {
+        perfStats_->StartTimer("detector_preprocess");
+    }
     LOG_DEBUG("Start detecting");
     float scaleW = 1.0f;
     float scaleH = 1.0f;
@@ -345,7 +350,7 @@ std::vector<BoundingBox> Detector::Detect(const cv::Mat& frame)
     int32_t offsetH = 0.0f;
     cv::Mat preprocessed = PreProcess(frame, scaleW, scaleH, offsetW, offsetH);
     LOG_DEBUG("preprocess successful: " + std::to_string(scaleW) + " " + std::to_string(scaleH) +
-        " " + std::to_string(offsetW) + " " + std::to_string(offsetH));
+    " " + std::to_string(offsetW) + " " + std::to_string(offsetH));
     SetupInputs(preprocessed);
     std::vector<rknn_output> outputs(outputNum_);
     memset(outputs.data(), 0, sizeof(rknn_output) * outputNum_);
@@ -353,10 +358,18 @@ std::vector<BoundingBox> Detector::Detect(const cv::Mat& frame)
         outputs[i].index = i;
         outputs[i].want_float = WantFloat(outputAttrs_[i].type);
     }
+    if (perfStats_) {
+        perfStats_->EndTimer("detector_preprocess");
+        perfStats_->StartTimer("detector_inference");
+    }
     int32_t ret = rknn_run(rknnCtx_, nullptr);
     if (ret < 0) {
         LOG_INFO("rknn run failed: " + std::to_string(ret));
         return boxes;
+    }
+    if (perfStats_) {
+        perfStats_->EndTimer("detector_inference");
+        perfStats_->StartTimer("detector_postprocess");
     }
     LOG_DEBUG("RKNN inference successful");
     ret = rknn_outputs_get(rknnCtx_, outputNum_, outputs.data(), nullptr);
@@ -366,6 +379,34 @@ std::vector<BoundingBox> Detector::Detect(const cv::Mat& frame)
     }
     PostProcess(frame, outputs, scaleW, scaleH, offsetW, offsetH, boxes);
     rknn_outputs_release(rknnCtx_, outputNum_, outputs.data());
+    if (perfStats_) {
+        perfStats_->EndTimer("detector_postprocess");
+    }
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+    lastDetectTime_ = static_cast<double>(duration.count());
+
+    totalDetections_++;
+    if (perfStats_) {
+        perfStats_->IncrementCounter("total_detections");
+        perfStats_->IncrementCounter("detection_time_ms", static_cast<int32_t>(lastDetectTime_));
+        if (!boxes.empty()) {
+            perfStats_->IncrementCounter("detections_with_person", static_cast<int32_t>(boxes.size()));
+        }
+    }
+
+    if (!boxes.empty()) {
+        std::ostringstream oss;
+        oss << "Detected " << boxes.size() << " persons in " << lastDetectTime_ << "ms: ";
+        for (size_t i = 0; i < std::min(boxes.size(), static_cast<size_t>(3)); ++i) {
+            oss << "[" << static_cast<int32_t>(boxes[i].x1) << "," << static_cast<int32_t>(boxes[i].y1) << ","
+                << static_cast<int32_t>(boxes[i].x2) << "," << static_cast<int32_t>(boxes[i].y2) << " conf="
+                << std::fixed << std::setprecision(2) << boxes[i].conf << "] ";
+        }
+        LOG_INFO(oss.str());
+    } else {
+        LOG_DEBUG("No persons detected in " + std::to_string(lastDetectTime_) + "ms");
+    }
     return boxes;
 }
 
@@ -381,6 +422,7 @@ void Detector::SetNmsThreshold(float threshold)
 
 void Detector::SetPerformanceStats(PerformanceStats* performanceStats)
 {
+    perfStats_ = performanceStats;
 }
 
 } // namespace diff_det

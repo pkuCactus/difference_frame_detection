@@ -33,7 +33,7 @@ public:
     void SetPerformanceStats(PerformanceStats* performanceStats);
     int32_t GetInputWidth() {return modelInputWidth_;}
     int32_t GetInputHeight() {return modelInputHeight_;}
-    double GetLastDetectTime() {return 0.;};
+    double GetLastDetectTime() {return lastDetectTime_;};
 
 private:
     bool LoadModel();
@@ -52,6 +52,9 @@ private:
     int32_t modelInputWidth_ {0};
     int32_t modelInputHeight_ {0};
     int32_t modelInputChannel_ {0};
+    PerformanceStats* perfStats_ = nullptr;
+    double lastDetectTime_ {0};
+    int32_t totalDetections_ {0};
 
     LocalDetectionConfig config_ {};
     std::vector<std::string> labelNames_ {};
