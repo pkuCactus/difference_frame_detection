@@ -188,7 +188,8 @@ std::vector<Track> ByteTracker::Update(const cv::Mat& frame,
     std::vector<int> lostIndices;
     
     for (size_t i = 0; i < tracks_.size(); ++i) {
-        if (tracks_[i]->getState() == TrackState::Tracked) {
+        if (tracks_[i]->getState() == TrackState::Tracked ||
+            tracks_[i]->getState() == TrackState::Tentative) {
             trackedTracks.push_back(tracks_[i].get());
             trackedIndices.push_back(i);
         } else if (tracks_[i]->getState() == TrackState::Lost) {
