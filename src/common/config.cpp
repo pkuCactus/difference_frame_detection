@@ -115,6 +115,8 @@ std::string EventAnalysisConfig::ToString() const {
     oss << "EventAnalysisConfig:\n";
     oss << "  mode: " << mode << "\n";
     oss << "  video_duration_sec: " << videoDurationSec << "\n";
+    oss << "  webhook_url: " << webhookUrl << "\n";
+    oss << "  webhook_enabled: " << (webhookEnabled ? "true" : "false") << "\n";
     return oss.str();
 }
 
@@ -212,6 +214,8 @@ Config Config::FromYaml(const YAML::Node& node) {
         auto eventNode = node["event_analysis"];
         SetIfPresent(eventNode, "mode", config.eventAnalysis.mode);
         SetIfPresent(eventNode, "video_duration_sec", config.eventAnalysis.videoDurationSec);
+        SetIfPresent(eventNode, "webhook_url", config.eventAnalysis.webhookUrl);
+        SetIfPresent(eventNode, "webhook_enabled", config.eventAnalysis.webhookEnabled);
     }
 
     if (node["logging"]) {
@@ -371,6 +375,8 @@ YAML::Node Config::ToYaml() const {
 
     node["event_analysis"]["mode"] = eventAnalysis.mode;
     node["event_analysis"]["video_duration_sec"] = eventAnalysis.videoDurationSec;
+    node["event_analysis"]["webhook_url"] = eventAnalysis.webhookUrl;
+    node["event_analysis"]["webhook_enabled"] = eventAnalysis.webhookEnabled;
 
     node["logging"]["level"] = logging.level;
     node["logging"]["file_path"] = logging.filePath;

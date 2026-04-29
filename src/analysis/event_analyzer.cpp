@@ -5,12 +5,88 @@
 #include <filesystem>
 #include <sstream>
 #include <iomanip>
+#include <ctime>
+#include <curl/curl.h>
+#include <nlohmann/json.hpp>
 
 namespace diff_det {
 
 namespace {
 
 const char* kOutputDir = "outputs";
+
+std::string EncodeBase64(const cv::Mat& frame) {
+    std::vector<uint8_t> buf;
+    std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY, 90};
+    if (!cv::imencode(".jpg", frame, buf, params)) {
+        LOG_ERROR("Failed to encode frame to JPEG");
+        return "";
+    }
+    static const char* base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string result;
+    result.reserve(buf.size() * 4 / 3 + 4);
+    int i = 0;
+    int n = static_cast<int>(buf.size());
+    while (i < n) {
+        uint32_t octet_a = i < n ? buf[i++] : 0;
+        uint32_t octet_b = i < n ? buf[i++] : 0;
+        uint32_t octet_c = i < n ? buf[i++] : 0;
+        uint32_t triple = (octet_a << 16) | (octet_b << 8) | octet_c;
+        result += base64Chars[(triple >> 18) & 0x3F];
+        result += base64Chars[(triple >> 12) & 0x3F];
+        result += base64Chars[(triple >> 6) & 0x3F];
+        result += base64Chars[triple & 0x3F];
+    }
+    int mod = n % 3;
+    if (mod == 1) {
+        result[result.size() - 1] = '=';
+        result[result.size() - 2] = '=';
+    } else if (mod == 2) {
+        result[result.size() - 1] = '=';
+    }
+    return result;
+}
+
+std::string FormatTimestampISO(int64_t timestampMs) {
+    time_t t = timestampMs / 1000;
+    struct tm* tm_info = localtime(&t);
+    std::ostringstream oss;
+    oss << std::put_time(tm_info, "%Y-%m-%dT%H:%M:%S");
+    return oss.str();
+}
+
+bool SendWebhook(const std::string& url, const cv::Mat& frame, int64_t timestamp) {
+    std::string base64Data = EncodeBase64(frame);
+    if (base64Data.empty()) {
+        return false;
+    }
+    std::string timestampStr = FormatTimestampISO(timestamp);
+    nlohmann::json jsonData;
+    jsonData["image_base64"] = base64Data;
+    jsonData["timestamp"] = timestampStr;
+    std::string jsonStr = jsonData.dump();
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        LOG_ERROR("Failed to init CURL for webhook");
+        return false;
+    }
+    struct curl_slist* headers = nullptr;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonStr.c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+    CURLcode res = curl_easy_perform(curl);
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+    if (res != CURLE_OK) {
+        LOG_ERROR("Webhook CURL failed: " + std::string(curl_easy_strerror(res)));
+        return false;
+    }
+    LOG_INFO("Webhook sent successfully to: " + url + ", timestamp=" + timestampStr);
+    return true;
+}
 
 void SaveFrame(const cv::Mat& frame, const std::string& filename) {
     try {
@@ -46,12 +122,15 @@ const char* ModeToString(EventAnalysisMode mode) {
 EventAnalyzer::EventAnalyzer(const EventAnalysisConfig& config)
     : mode_(ParseMode(config.mode))
     , videoDurationSec_(config.videoDurationSec)
+    , webhookUrl_(config.webhookUrl)
+    , webhookEnabled_(config.webhookEnabled)
     , videoBuffer_(nullptr)
     , eventCount_(0)
     , lastEventId_(0) {
 
     LOG_INFO("EventAnalyzer initialized: mode=" + std::string(ModeToString(mode_)) +
-             ", videoDuration=" + std::to_string(videoDurationSec_) + "s");
+             ", videoDuration=" + std::to_string(videoDurationSec_) + "s" +
+             ", webhook=" + (webhookEnabled_ ? webhookUrl_ : "disabled"));
 }
 
 EventAnalyzer::~EventAnalyzer() {
@@ -96,14 +175,19 @@ void EventAnalyzer::AnalyzeImage(const cv::Mat& frame,
     DrawBoundingBoxes(annotatedFrame, boxes);
     SaveFrame(annotatedFrame, eventId + ".jpg");
 
+    int64_t timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+
+    if (webhookEnabled_) {
+        SendWebhook(webhookUrl_, annotatedFrame, timestamp);
+    }
+
     LOG_INFO("Event analysis (image): eventId=" + eventId +
              ", boxes=" + std::to_string(boxes.size()) +
              ", totalEvents=" + std::to_string(eventCount_));
 
     if (callback_) {
-        callback_(annotatedFrame, boxes, eventCount_,
-                  std::chrono::duration_cast<std::chrono::milliseconds>(
-                      std::chrono::system_clock::now().time_since_epoch()).count());
+        callback_(annotatedFrame, boxes, eventCount_, timestamp);
     }
 }
 
@@ -120,13 +204,20 @@ void EventAnalyzer::AnalyzeVideo(const std::vector<cv::Mat>& frames,
         SaveFrame(frames[i], eventId + "_frame_" + std::to_string(i) + ".jpg");
     }
 
+    int64_t timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+
+    cv::Mat annotatedFrame = frames[0].clone();
+    DrawBoundingBoxes(annotatedFrame, boxes);
+
+    if (webhookEnabled_) {
+        SendWebhook(webhookUrl_, annotatedFrame, timestamp);
+    }
+
     LOG_INFO("Event analysis (video): eventId=" + eventId +
              ", frames=" + std::to_string(frames.size()) +
              ", boxes=" + std::to_string(boxes.size()) +
              ", totalEvents=" + std::to_string(eventCount_));
-
-    cv::Mat annotatedFrame = frames[0].clone();
-    DrawBoundingBoxes(annotatedFrame, boxes);
 
     if (callback_) {
         for (size_t i = 0; i < frames.size(); ++i) {

@@ -92,8 +92,10 @@ struct RefFrameConfig {
 struct EventAnalysisConfig {
     std::string mode;
     int32_t videoDurationSec;
+    std::string webhookUrl;
+    bool webhookEnabled;
 
-    EventAnalysisConfig() : mode("image"), videoDurationSec(5) {}
+    EventAnalysisConfig() : mode("image"), videoDurationSec(5), webhookUrl("http://localhost:8080/api/vision"), webhookEnabled(false) {}
 
     bool IsValid() const;
     std::string ToString() const;

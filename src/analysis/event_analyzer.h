@@ -51,6 +51,8 @@ private:
 
     EventAnalysisMode mode_;
     int videoDurationSec_;
+    std::string webhookUrl_;
+    bool webhookEnabled_;
     EventCallback callback_;
     std::deque<cv::Mat>* videoBuffer_;
     
