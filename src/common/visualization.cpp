@@ -13,7 +13,7 @@ void DrawBoundingBoxes(cv::Mat& frame, const std::vector<BoundingBox>& boxes) {
 
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(2) << box.conf;
-        std::string text = "person: " + oss.str();
+        std::string text = "cls: " + std::to_string(box.label) + ", conf " + oss.str();
 
         cv::Point textPos(static_cast<int>(box.x1), static_cast<int>(box.y1) - 5);
         cv::putText(frame, text, textPos, cv::FONT_HERSHEY_SIMPLEX, 0.5,

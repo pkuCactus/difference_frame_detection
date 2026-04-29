@@ -1,6 +1,7 @@
 #include "common/logger.h"
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 
 namespace diff_det {
 
@@ -17,17 +18,17 @@ Logger::~Logger() {
 
 void Logger::Init(const std::string& filePath, const std::string& level) {
     std::lock_guard<std::mutex> lock(mutex_);
-    
+
     if (fileStream_.is_open()) {
         fileStream_.close();
     }
-    
+
     fileStream_.open(filePath, std::ios::out | std::ios::app);
     if (!fileStream_.is_open()) {
         std::cerr << "Failed to open Log file: " << filePath << std::endl;
         return;
     }
-    
+
     currentLevel_ = StringToLevel(level);
     initialized_ = true;
 }
@@ -36,25 +37,27 @@ void Logger::Log(LogLevel level, const std::string& file, int32_t line, const st
     if (!initialized_) {
         return;
     }
-    
+
     if (level < currentLevel_) {
         return;
     }
-    
+
     std::lock_guard<std::mutex> lock(mutex_);
-    
+
     std::string fileName = file;
     size_t pos = fileName.find_last_of("/\\");
     if (pos != std::string::npos) {
         fileName = fileName.substr(pos + 1);
     }
-    
-    fileStream_ << "[" << GetCurrentTime() << "] "
-                << "[" << LevelToString(level) << "] "
-                << "[" << fileName << ":" << line << "] "
-                << message << std::endl;
-    
+
+    std::stringstream ss;
+    ss << "[" << GetCurrentTime() << "] "
+        << "[" << LevelToString(level) << "] "
+        << "[" << fileName << ":" << line << "] "
+        << message << std::endl;
+    fileStream_ << ss.str();
     fileStream_.flush();
+    std::cout << ss.str();
 }
 
 void Logger::SetLevel(const std::string& level) {
@@ -83,7 +86,7 @@ LogLevel Logger::StringToLevel(const std::string& level) {
 std::string Logger::GetCurrentTime() {
     std::time_t now = std::time(nullptr);
     std::tm* tm = std::localtime(&now);
-    
+
     std::ostringstream oss;
     oss << std::put_time(tm, "%Y-%m-%d %H:%M:%S");
     return oss.str();

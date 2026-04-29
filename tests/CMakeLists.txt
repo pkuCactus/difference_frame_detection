@@ -18,7 +18,6 @@ set(TEST_SOURCES
     test_event_analyzer.cpp
     test_visualization.cpp
     test_image_loader.cpp
-    test_yolo_postprocess.cpp
     ${CMAKE_SOURCE_DIR}/src/common/config.cpp
     ${CMAKE_SOURCE_DIR}/src/common/logger.cpp
     ${CMAKE_SOURCE_DIR}/src/common/performance_stats.cpp
@@ -30,7 +29,6 @@ set(TEST_SOURCES
     ${CMAKE_SOURCE_DIR}/src/camera/detection_reader.cpp
     ${CMAKE_SOURCE_DIR}/src/detection/rknn_detector.cpp
     ${CMAKE_SOURCE_DIR}/src/detection/rknn_adapter.cpp
-    ${CMAKE_SOURCE_DIR}/src/detection/yolo_postprocess.cpp
     ${CMAKE_SOURCE_DIR}/src/tracking/byte_tracker.cpp
     ${CMAKE_SOURCE_DIR}/src/analysis/frame_diff.cpp
     ${CMAKE_SOURCE_DIR}/src/analysis/similarity.cpp
@@ -39,6 +37,10 @@ set(TEST_SOURCES
     ${CMAKE_SOURCE_DIR}/src/common/visualization.cpp
     ${CMAKE_SOURCE_DIR}/src/common/image_loader.cpp
 )
+
+if(NOT CMAKE_TOOLCHAIN_FILE)
+    list(APPEND TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/rknn_api_stub.cpp)
+endif()
 
 add_executable(difference_detection_tests ${TEST_SOURCES})
 
@@ -56,6 +58,7 @@ target_include_directories(difference_detection_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${OpenCV_INCLUDE_DIRS}
     ${CURL_INCLUDE_DIRS}
+    ${RKNN_INCLUDE_DIR}
 )
 
 target_link_libraries(difference_detection_tests PRIVATE

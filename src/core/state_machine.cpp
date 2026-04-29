@@ -525,9 +525,9 @@ void StateMachine::InitializeComponents() {
 
     detectionReader_ = std::make_unique<CameraDetectionReader>();
 
-    detector_ = std::make_unique<RknnDetector>(config_.localDetection);
+    detector_ = std::make_unique<Detector>(config_.localDetection);
     detector_->Init();
-    detector_->setPerformanceStats(&perfStats_);
+    detector_->SetPerformanceStats(&perfStats_);
 
     if (config_.tracker.enabled) {
         tracker_ = std::make_unique<ByteTracker>(config_.tracker);

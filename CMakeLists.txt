@@ -79,9 +79,7 @@ set(SOURCES
     src/decoder/frame_decoder.cpp
     src/camera/capability_checker.cpp
     src/camera/detection_reader.cpp
-    src/detection/rknn_detector.cpp
-    src/detection/rknn_adapter.cpp
-    src/detection/yolo_postprocess.cpp
+    src/detection/detector.cpp
     src/tracking/byte_tracker.cpp
     src/analysis/frame_diff.cpp
     src/analysis/similarity.cpp
@@ -173,6 +171,18 @@ if(RK3566_PLATFORM)
         message(STATUS "Found RKNN library: ${RKNN_LIBRARY}")
     else()
         message(WARNING "RKNN library not found, building without real RKNN support")
+    endif()
+endif()
+
+# 本地编译也需要 RKNN 头文件（stub 编译用）
+if(NOT RKNN_INCLUDE_DIR)
+    find_path(RKNN_INCLUDE_DIR rknn_api.h
+        HINTS "${CMAKE_SOURCE_DIR}/third-party/rknn-sdk/rknpu2/runtime/Linux/librknn_api/include"
+        NO_DEFAULT_PATH
+    )
+    if(RKNN_INCLUDE_DIR)
+        target_include_directories(difference_detection PRIVATE ${RKNN_INCLUDE_DIR})
+        message(STATUS "Found RKNN include dir (Linux): ${RKNN_INCLUDE_DIR}")
     endif()
 endif()
 

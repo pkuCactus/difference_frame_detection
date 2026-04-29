@@ -5,7 +5,7 @@
 #include "common/image_loader.h"
 #include "rtsp/rtsp_validator.h"
 #include "rtsp/rtsp_client.h"
-#include "detection/rknn_detector.h"
+#include "detection/detector.h"
 
 #include <iostream>
 #include <signal.h>
@@ -230,6 +230,7 @@ int runDetectDebug(const CmdLineArgs& args) {
             std::cerr << "用法: detect <image_path> [config_path]" << std::endl;
             return 1;
         }
+        Logger::GetInstance().Init("outputs/detect_debug.log", "DEBUG");
 
         Config config = Config::FromFile(args.configPath);
 
@@ -243,7 +244,7 @@ int runDetectDebug(const CmdLineArgs& args) {
         std::cout << "Conf threshold: " << config.localDetection.confThreshold << std::endl;
         std::cout << "========================================" << std::endl;
 
-        RknnDetector detector(config.localDetection);
+        Detector detector(config.localDetection);
         if (!detector.Init()) {
             std::cerr << "错误: 检测器初始化失败" << std::endl;
             return 1;
@@ -272,6 +273,7 @@ int runDetectDebug(const CmdLineArgs& args) {
                           << "y1=" << static_cast<int>(boxes[i].y1) << ", "
                           << "x2=" << static_cast<int>(boxes[i].x2) << ", "
                           << "y2=" << static_cast<int>(boxes[i].y2) << ", "
+                          << "category=" << boxes[i].label << ", "
                           << "conf=" << std::fixed << std::setprecision(2) << boxes[i].conf
                           << std::endl;
             }
