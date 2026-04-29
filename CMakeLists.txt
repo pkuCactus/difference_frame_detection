@@ -248,3 +248,12 @@ if(RKNN_LIBRARY)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RKNN_LIBRARY} ${DEPLOY_DIR}/
     )
 endif()
+
+# 复制配置文件和模型文件到deploy目录
+add_custom_command(TARGET difference_detection POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${DEPLOY_DIR}/config
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_SOURCE_DIR}/config/config.yaml ${DEPLOY_DIR}/config/
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${DEPLOY_DIR}/data/models
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data/models ${DEPLOY_DIR}/data/models
+    COMMENT "Copying config and models to ${DEPLOY_DIR}"
+)
