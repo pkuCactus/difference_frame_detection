@@ -175,20 +175,19 @@ void EventAnalyzer::AnalyzeImage(const cv::Mat& frame,
     std::string eventId = generateEventId();
     eventCount_++;
 
-    cv::Mat annotatedFrame = frame.clone();
-    if (withBox_) {
-        DrawBoundingBoxes(annotatedFrame, boxes);
-    }
-
     if (saveImg_) {
-        SaveFrame(annotatedFrame, eventId + ".jpg");
+        cv::Mat img = frame.clone();
+        if (withBox_) {
+            DrawBoundingBoxes(img, boxes);
+        }
+        SaveFrame(img, eventId + ".jpg");
     }
 
     int64_t timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
 
     if (webhookEnabled_) {
-        SendWebhook(webhookUrl_, annotatedFrame, timestamp);
+        SendWebhook(webhookUrl_, frame, timestamp);
     }
 
     LOG_INFO("Event analysis (image): eventId=" + eventId +
@@ -196,7 +195,7 @@ void EventAnalyzer::AnalyzeImage(const cv::Mat& frame,
              ", totalEvents=" + std::to_string(eventCount_));
 
     if (callback_) {
-        callback_(annotatedFrame, boxes, eventCount_, timestamp);
+        callback_(frame, boxes, eventCount_, timestamp);
     }
 }
 
@@ -222,13 +221,8 @@ void EventAnalyzer::AnalyzeVideo(const std::vector<cv::Mat>& frames,
     int64_t timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
 
-    cv::Mat annotatedFrame = frames[0].clone();
-    if (withBox_) {
-        DrawBoundingBoxes(annotatedFrame, boxes);
-    }
-
     if (webhookEnabled_) {
-        SendWebhook(webhookUrl_, annotatedFrame, timestamp);
+        SendWebhook(webhookUrl_, frames[0], timestamp);
     }
 
     LOG_INFO("Event analysis (video): eventId=" + eventId +
@@ -238,11 +232,7 @@ void EventAnalyzer::AnalyzeVideo(const std::vector<cv::Mat>& frames,
 
     if (callback_) {
         for (size_t i = 0; i < frames.size(); ++i) {
-            cv::Mat annotated = frames[i].clone();
-            if (withBox_ && i == 0) {
-                DrawBoundingBoxes(annotated, boxes);
-            }
-            callback_(annotated, boxes, static_cast<int>(i),
+            callback_(frames[i], boxes, static_cast<int>(i),
                       std::chrono::duration_cast<std::chrono::milliseconds>(
                           std::chrono::system_clock::now().time_since_epoch()).count());
         }
