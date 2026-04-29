@@ -124,13 +124,17 @@ EventAnalyzer::EventAnalyzer(const EventAnalysisConfig& config)
     , videoDurationSec_(config.videoDurationSec)
     , webhookUrl_(config.webhookUrl)
     , webhookEnabled_(config.webhookEnabled)
+    , saveImg_(config.saveImg)
+    , withBox_(config.withBox)
     , videoBuffer_(nullptr)
     , eventCount_(0)
     , lastEventId_(0) {
 
     LOG_INFO("EventAnalyzer initialized: mode=" + std::string(ModeToString(mode_)) +
              ", videoDuration=" + std::to_string(videoDurationSec_) + "s" +
-             ", webhook=" + (webhookEnabled_ ? webhookUrl_ : "disabled"));
+             ", webhook=" + (webhookEnabled_ ? webhookUrl_ : "disabled") +
+             ", saveImg=" + (saveImg_ ? "true" : "false") +
+             ", withBox=" + (withBox_ ? "true" : "false"));
 }
 
 EventAnalyzer::~EventAnalyzer() {
@@ -172,8 +176,13 @@ void EventAnalyzer::AnalyzeImage(const cv::Mat& frame,
     eventCount_++;
 
     cv::Mat annotatedFrame = frame.clone();
-    DrawBoundingBoxes(annotatedFrame, boxes);
-    SaveFrame(annotatedFrame, eventId + ".jpg");
+    if (withBox_) {
+        DrawBoundingBoxes(annotatedFrame, boxes);
+    }
+
+    if (saveImg_) {
+        SaveFrame(annotatedFrame, eventId + ".jpg");
+    }
 
     int64_t timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
@@ -200,15 +209,23 @@ void EventAnalyzer::AnalyzeVideo(const std::vector<cv::Mat>& frames,
     std::string eventId = generateEventId();
     eventCount_++;
 
-    for (size_t i = 0; i < frames.size(); ++i) {
-        SaveFrame(frames[i], eventId + "_frame_" + std::to_string(i) + ".jpg");
+    if (saveImg_) {
+        for (size_t i = 0; i < frames.size(); ++i) {
+            cv::Mat frameToSave = frames[i].clone();
+            if (withBox_) {
+                DrawBoundingBoxes(frameToSave, boxes);
+            }
+            SaveFrame(frameToSave, eventId + "_frame_" + std::to_string(i) + ".jpg");
+        }
     }
 
     int64_t timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
 
     cv::Mat annotatedFrame = frames[0].clone();
-    DrawBoundingBoxes(annotatedFrame, boxes);
+    if (withBox_) {
+        DrawBoundingBoxes(annotatedFrame, boxes);
+    }
 
     if (webhookEnabled_) {
         SendWebhook(webhookUrl_, annotatedFrame, timestamp);
@@ -222,7 +239,7 @@ void EventAnalyzer::AnalyzeVideo(const std::vector<cv::Mat>& frames,
     if (callback_) {
         for (size_t i = 0; i < frames.size(); ++i) {
             cv::Mat annotated = frames[i].clone();
-            if (i == 0) {
+            if (withBox_ && i == 0) {
                 DrawBoundingBoxes(annotated, boxes);
             }
             callback_(annotated, boxes, static_cast<int>(i),

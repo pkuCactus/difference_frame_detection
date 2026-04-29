@@ -53,6 +53,8 @@ private:
     int videoDurationSec_;
     std::string webhookUrl_;
     bool webhookEnabled_;
+    bool saveImg_;
+    bool withBox_;
     EventCallback callback_;
     std::deque<cv::Mat>* videoBuffer_;
     

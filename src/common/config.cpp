@@ -117,6 +117,8 @@ std::string EventAnalysisConfig::ToString() const {
     oss << "  video_duration_sec: " << videoDurationSec << "\n";
     oss << "  webhook_url: " << webhookUrl << "\n";
     oss << "  webhook_enabled: " << (webhookEnabled ? "true" : "false") << "\n";
+    oss << "  save_img: " << (saveImg ? "true" : "false") << "\n";
+    oss << "  with_box: " << (withBox ? "true" : "false") << "\n";
     return oss.str();
 }
 
@@ -216,6 +218,8 @@ Config Config::FromYaml(const YAML::Node& node) {
         SetIfPresent(eventNode, "video_duration_sec", config.eventAnalysis.videoDurationSec);
         SetIfPresent(eventNode, "webhook_url", config.eventAnalysis.webhookUrl);
         SetIfPresent(eventNode, "webhook_enabled", config.eventAnalysis.webhookEnabled);
+        SetIfPresent(eventNode, "save_img", config.eventAnalysis.saveImg);
+        SetIfPresent(eventNode, "with_box", config.eventAnalysis.withBox);
     }
 
     if (node["logging"]) {
@@ -377,6 +381,8 @@ YAML::Node Config::ToYaml() const {
     node["event_analysis"]["video_duration_sec"] = eventAnalysis.videoDurationSec;
     node["event_analysis"]["webhook_url"] = eventAnalysis.webhookUrl;
     node["event_analysis"]["webhook_enabled"] = eventAnalysis.webhookEnabled;
+    node["event_analysis"]["save_img"] = eventAnalysis.saveImg;
+    node["event_analysis"]["with_box"] = eventAnalysis.withBox;
 
     node["logging"]["level"] = logging.level;
     node["logging"]["file_path"] = logging.filePath;

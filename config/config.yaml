@@ -41,6 +41,8 @@ event_analysis:
   video_duration_sec: 5
   webhook_url: "http://localhost:8080/api/vision"
   webhook_enabled: true
+  save_img: true
+  with_box: true
 
 logging:
   level: "INFO"

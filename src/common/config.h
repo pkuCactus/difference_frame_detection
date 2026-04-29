@@ -94,8 +94,10 @@ struct EventAnalysisConfig {
     int32_t videoDurationSec;
     std::string webhookUrl;
     bool webhookEnabled;
+    bool saveImg;
+    bool withBox;
 
-    EventAnalysisConfig() : mode("image"), videoDurationSec(5), webhookUrl("http://localhost:8080/api/vision"), webhookEnabled(false) {}
+    EventAnalysisConfig() : mode("image"), videoDurationSec(5), webhookUrl("http://localhost:8080/api/vision"), webhookEnabled(false), saveImg(true), withBox(true) {}
 
     bool IsValid() const;
     std::string ToString() const;
