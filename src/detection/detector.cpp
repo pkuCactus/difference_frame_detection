@@ -252,7 +252,8 @@ void Detector::PostProcess(const cv::Mat& frame, const std::vector<rknn_output> 
                     }
                     int32_t label = 0;
                     int8_t classProb = 0.0f;
-                    for (int32_t c = 0; c < OBJ_CLASS_NUM; ++c) {
+                    // 当前只检测人
+                    for (int32_t c = 0; c < 1; ++c) {
                         if (data[idx + (5 + c) * gridLen] > classProb) {
                             classProb = data[idx + (5 + c) * gridLen];
                             label = c;

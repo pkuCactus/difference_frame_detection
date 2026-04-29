@@ -34,7 +34,7 @@ ref_frame:
   similarity_threshold: 0.85
   compare_method: "ssim"
   update_strategy: "newest"
-  compare_roi_only: false
+  compare_roi_only: true
 
 event_analysis:
   mode: "image"

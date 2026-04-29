@@ -92,17 +92,16 @@ void EventAnalyzer::AnalyzeImage(const cv::Mat& frame,
     std::string eventId = generateEventId();
     eventCount_++;
 
-    SaveFrame(frame, eventId + ".jpg");
-
     cv::Mat annotatedFrame = frame.clone();
     DrawBoundingBoxes(annotatedFrame, boxes);
+    SaveFrame(annotatedFrame, eventId + ".jpg");
 
     LOG_INFO("Event analysis (image): eventId=" + eventId +
              ", boxes=" + std::to_string(boxes.size()) +
              ", totalEvents=" + std::to_string(eventCount_));
-    
+
     if (callback_) {
-        callback_(annotatedFrame, boxes, eventCount_, 
+        callback_(annotatedFrame, boxes, eventCount_,
                   std::chrono::duration_cast<std::chrono::milliseconds>(
                       std::chrono::system_clock::now().time_since_epoch()).count());
     }
@@ -154,10 +153,10 @@ std::string EventAnalyzer::generateEventId() {
     auto now = std::chrono::system_clock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         now.time_since_epoch()).count();
-    
+
     std::ostringstream oss;
     oss << "event_" << std::setw(12) << std::setfill('0') << ms;
-    
+
     return oss.str();
 }
 
@@ -171,17 +170,17 @@ void VideoBuffer::addFrame(const cv::Mat& frame, int frameId, int64_t timestamp)
         LOG_WARN("VideoBuffer received empty frame");
         return;
     }
-    
+
     frames_.push_back(frame.clone());
     frameIds_.push_back(frameId);
     timestamps_.push_back(timestamp);
-    
+
     while (frames_.size() > static_cast<size_t>(maxSize_)) {
         frames_.pop_front();
         frameIds_.pop_front();
         timestamps_.pop_front();
     }
-    
+
     LOG_DEBUG("VideoBuffer: added frame " + std::to_string(frameId) +
               ", bufferSize=" + std::to_string(frames_.size()));
 }
