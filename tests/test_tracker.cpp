@@ -80,14 +80,39 @@ TEST(ByteTrackerTest, Reset) {
     TrackerConfig config;
     config.confirmFrames = 1;
     ByteTracker tracker(config);
-    
+
     cv::Mat frame(480, 640, CV_8UC3);
     std::vector<BoundingBox> boxes;
     boxes.push_back(BoundingBox(100, 100, 200, 200, 0.9f, 0));
-    
+
     tracker.Update(frame, boxes);
     tracker.reset();
-    
+
     std::vector<Track> tracks = tracker.Update(frame, {});
     EXPECT_TRUE(tracks.empty());
+}
+
+TEST(ByteTrackerTest, TentativeTrackGetsConfirmed) {
+    TrackerConfig config;
+    config.confirmFrames = 3;
+    config.maxLostFrames = 30;
+    config.highThreshold = 0.5f;
+    ByteTracker tracker(config);
+
+    cv::Mat frame(480, 640, CV_8UC3);
+
+    for (int i = 0; i < 5; ++i) {
+        std::vector<BoundingBox> boxes;
+        boxes.push_back(BoundingBox(100 + i * 2, 100 + i * 2, 200 + i * 2, 200 + i * 2, 0.9f, 0));
+        std::vector<Track> tracks = tracker.Update(frame, boxes);
+
+        if (i < 2) {
+            EXPECT_TRUE(tracks.empty()) << "Frame " << i << " should have no confirmed tracks";
+        } else {
+            EXPECT_EQ(tracks.size(), 1) << "Frame " << i << " should have 1 confirmed track";
+            if (!tracks.empty()) {
+                EXPECT_EQ(tracks[0].state, TrackState::Tracked);
+            }
+        }
+    }
 }
