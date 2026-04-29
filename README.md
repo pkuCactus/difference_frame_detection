@@ -183,7 +183,7 @@ bash build.sh
 
 ```bash
 # 方式一：scp 拷贝
-scp -r build/deploy/* user@rk3566_ip:/home/user/difference_detection/
+adb push build/deploy /data/local/tmp/frame_difference
 
 # 方式二：通过 USB/网络共享拷贝
 ```
@@ -251,7 +251,7 @@ export LD_LIBRARY_PATH=.:$LD_LIBRARY_PATH
 # 单独测试 RTSP 收流
 ./difference_detection --test-rtsp --rtsp-url rtsp://192.168.1.100:554/stream
 
-# RTSP 收流可视化
+# RTSP 收流可视化(3566上不可用)
 ./difference_detection --visualize-rtsp --rtsp-url rtsp://localhost:8554/live
 
 # 对单张图片进行检测调试（输出带框结果到 outputs/ 目录）

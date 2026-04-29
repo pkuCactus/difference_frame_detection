@@ -27,8 +27,7 @@ set(TEST_SOURCES
     ${CMAKE_SOURCE_DIR}/src/decoder/frame_decoder.cpp
     ${CMAKE_SOURCE_DIR}/src/camera/capability_checker.cpp
     ${CMAKE_SOURCE_DIR}/src/camera/detection_reader.cpp
-    ${CMAKE_SOURCE_DIR}/src/detection/rknn_detector.cpp
-    ${CMAKE_SOURCE_DIR}/src/detection/rknn_adapter.cpp
+    ${CMAKE_SOURCE_DIR}/src/detection/detector.cpp
     ${CMAKE_SOURCE_DIR}/src/tracking/byte_tracker.cpp
     ${CMAKE_SOURCE_DIR}/src/analysis/frame_diff.cpp
     ${CMAKE_SOURCE_DIR}/src/analysis/similarity.cpp
