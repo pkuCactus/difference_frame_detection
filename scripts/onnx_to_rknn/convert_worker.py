@@ -144,9 +144,8 @@ def convert_onnx_to_rknn(
             load_args["inputs"] = [input_name]
             print(f"[LOG] 输入节点: {input_name}")
 
-        # 输入尺寸和数据类型
+        # 输入尺寸
         input_size = config.get("input_size")
-        input_dtype = config.get("input_dtype", "float32")
         if input_size:
             # input_size格式: [height, width]，需要添加channel
             channel = 3  # RGB/BGR 3通道
@@ -155,7 +154,6 @@ def convert_onnx_to_rknn(
             load_args["input_size_list"] = [full_size]
             print(f"[LOG] 输入尺寸: {input_size[0]}x{input_size[1]}x{channel} (HxWxC)")
         
-        print(f"[LOG] 输入数据类型: {input_dtype} (此参数仅用于参考，实际数据类型由ONNX模型决定)")
         print(f"[LOG] 加载ONNX: {onnx_path}")
         print(f"[LOG] load_onnx参数: {load_args}")
         ret = rknn.load_onnx(**load_args)

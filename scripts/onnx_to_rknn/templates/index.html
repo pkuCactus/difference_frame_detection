@@ -209,14 +209,6 @@
                                 <input type="number" name="input_width" placeholder="如: 832">
                             </div>
                             <div>
-                                <label>数据类型 <span class="tooltip"><span class="tooltip-icon">❓</span><span class="tooltip-text">输入张量的数据类型。此参数仅用于参考，实际数据类型由ONNX模型决定。量化时可选择uint8。</span></span></label>
-                                <select name="input_dtype">
-                                    <option value="float32">float32</option>
-                                    <option value="float16">float16</option>
-                                    <option value="uint8">uint8</option>
-                                </select>
-                            </div>
-                            <div>
                                 <label>批次 <span class="tooltip"><span class="tooltip-icon">❓</span><span class="tooltip-text">一次推理处理多少张图片，默认为1。增大批次可提高吞吐量，但会增加内存消耗和模型大小。</span></span></label>
                                 <input type="number" name="batch_size" value="1" min="1">
                             </div>

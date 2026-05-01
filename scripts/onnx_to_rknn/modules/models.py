@@ -16,7 +16,6 @@ class ConversionConfig:
     input_name: Optional[str] = None
     mean_values: Optional[list[float]] = None
     std_values: Optional[list[float]] = None
-    input_dtype: str = "float32"
     do_quantization: bool = False
     quantized_dtype: str = "w8a8"
     quantized_algorithm: str = "normal"
@@ -33,7 +32,6 @@ class ConversionConfig:
             "input_name": self.input_name,
             "mean_values": self.mean_values,
             "std_values": self.std_values,
-            "input_dtype": self.input_dtype,
             "do_quantization": self.do_quantization,
             "quantized_dtype": self.quantized_dtype,
             "quantized_algorithm": self.quantized_algorithm,

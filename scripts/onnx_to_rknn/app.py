@@ -92,8 +92,6 @@ def convert_direct():
     if input_height and input_width:
         config.input_size = (input_height, input_width)
 
-    config.input_dtype = request.form.get("input_dtype", "float32") or "float32"
-
     mean_str = request.form.get("mean_values", "")
     if mean_str:
         try:
