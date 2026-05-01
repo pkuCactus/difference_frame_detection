@@ -78,8 +78,36 @@
         }
         select option { background: #1a1a2e; color: #fff; }
         input::placeholder { color: rgba(255,255,255,0.4); }
-        .hint { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 3px; }
-        .checkbox-item { display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 6px; }
+.hint { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 3px; }
+.tooltip { position: relative; display: inline-block; }
+.tooltip .tooltip-icon { 
+    font-size: 14px; 
+    color: rgba(255,255,255,0.5); 
+    cursor: help; 
+    margin-left: 4px;
+}
+.tooltip .tooltip-text {
+    visibility: hidden;
+    width: 200px;
+    background-color: rgba(0,0,0,0.85);
+    color: #fff;
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -100px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+.checkbox-item { display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 6px; }
         .checkbox-item input { width: 16px; height: 16px; }
         .collapsible { display: none; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px; margin-top: 8px; }
         .collapsible.show { display: block; }
@@ -173,15 +201,15 @@
                         
                         <div class="form-row" style="margin-top: 12px;">
                             <div>
-                                <label>输入高度</label>
-                                <input type="number" name="input_height" placeholder="448">
+                                <label>输入高度 <span class="tooltip"><span class="tooltip-icon">❓</span><span class="tooltip-text">覆盖ONNX模型的默认输入高度。留空则使用ONNX原始尺寸。</span></span></label>
+                                <input type="number" name="input_height" placeholder="如: 448">
                             </div>
                             <div>
-                                <label>输入宽度</label>
-                                <input type="number" name="input_width" placeholder="832">
+                                <label>输入宽度 <span class="tooltip"><span class="tooltip-icon">❓</span><span class="tooltip-text">覆盖ONNX模型的默认输入宽度。留空则使用ONNX原始尺寸。</span></span></label>
+                                <input type="number" name="input_width" placeholder="如: 832">
                             </div>
                             <div>
-                                <label>数据类型</label>
+                                <label>数据类型 <span class="tooltip"><span class="tooltip-icon">❓</span><span class="tooltip-text">输入张量的数据类型。float32为默认精度，uint8用于量化输入。</span></span></label>
                                 <select name="input_dtype">
                                     <option value="float32">float32</option>
                                     <option value="float16">float16</option>
@@ -189,7 +217,7 @@
                                 </select>
                             </div>
                             <div>
-                                <label>批次</label>
+                                <label>批次 <span class="tooltip"><span class="tooltip-icon">❓</span><span class="tooltip-text">一次推理处理多少张图片，默认为1。增大批次可提高吞吐量，但会增加内存消耗和模型大小。</span></span></label>
                                 <input type="number" name="batch_size" value="1" min="1">
                             </div>
                         </div>
