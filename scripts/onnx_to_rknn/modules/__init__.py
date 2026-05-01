@@ -7,6 +7,7 @@ from .models import ConversionConfig, ConversionTask
 from .venv_manager import VirtualEnvManager
 from .utils import (
     tasks,
+    _tasks_lock,
     _add_task,
     _resolve_dataset_path,
     get_onnx_info,
