@@ -201,12 +201,14 @@
                         
                         <div class="form-row" style="margin-top: 12px;">
                             <div>
-                                <label>输入高度 <span class="tooltip"><span class="tooltip-icon">❓</span><span class="tooltip-text">覆盖ONNX模型的默认输入高度。留空则使用ONNX原始尺寸。</span></span></label>
+                                <label>输入高度 <span class="tooltip"><span class="tooltip-icon">❓</span><span class="tooltip-text">仅对动态shape的ONNX模型有效！固定shape模型无法修改输入尺寸。留空则使用ONNX原始尺寸。</span></span></label>
                                 <input type="number" name="input_height" placeholder="如: 448">
+                                <div class="hint" style="color: rgba(255,200,0,0.8);">⚠️ 仅支持动态shape模型</div>
                             </div>
                             <div>
-                                <label>输入宽度 <span class="tooltip"><span class="tooltip-icon">❓</span><span class="tooltip-text">覆盖ONNX模型的默认输入宽度。留空则使用ONNX原始尺寸。</span></span></label>
+                                <label>输入宽度 <span class="tooltip"><span class="tooltip-icon">❓</span><span class="tooltip-text">仅对动态shape的ONNX模型有效！固定shape模型无法修改输入尺寸。留空则使用ONNX原始尺寸。</span></span></label>
                                 <input type="number" name="input_width" placeholder="如: 832">
+                                <div class="hint" style="color: rgba(255,200,0,0.8);">⚠️ 仅支持动态shape模型</div>
                             </div>
                             <div>
                                 <label>批次 <span class="tooltip"><span class="tooltip-icon">❓</span><span class="tooltip-text">一次推理处理多少张图片，默认为1。增大批次可提高吞吐量，但会增加内存消耗和模型大小。</span></span></label>
