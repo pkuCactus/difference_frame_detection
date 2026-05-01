@@ -144,32 +144,18 @@ def convert_onnx_to_rknn(
             load_args["inputs"] = [input_name]
             print(f"[LOG] 输入节点: {input_name}")
 
-        # 输入尺寸和数据类型 - 这些参数会真正生效
+        # 输入尺寸和数据类型
         input_size = config.get("input_size")
         input_dtype = config.get("input_dtype", "float32")
         if input_size:
             # input_size格式: [height, width]，需要添加channel
-            # 根据数据类型推断channel数
-            if input_dtype == "float32" or input_dtype == "float16":
-                channel = 3  # RGB/BGR
-            elif input_dtype == "uint8":
-                channel = 3  # 通常也是3通道
-            else:
-                channel = 3
-            
+            channel = 3  # RGB/BGR 3通道
             # RKNN API要求input_size_list格式: [height, width, channel]
             full_size = [input_size[0], input_size[1], channel]
             load_args["input_size_list"] = [full_size]
             print(f"[LOG] 输入尺寸: {input_size[0]}x{input_size[1]}x{channel} (HxWxC)")
         
-        # 输入数据类型 - 通过inputs参数指定
-        if input_dtype and input_dtype != "float32":
-            # RKNN支持的数据类型: float32, float16, uint8, int8
-            # 需要通过inputs参数指定每个输入的类型
-            input_name_default = config.get("input_name", "input")
-            load_args["input_dtype"] = input_dtype
-            print(f"[LOG] 输入数据类型: {input_dtype}")
-
+        print(f"[LOG] 输入数据类型: {input_dtype} (此参数仅用于参考，实际数据类型由ONNX模型决定)")
         print(f"[LOG] 加载ONNX: {onnx_path}")
         print(f"[LOG] load_onnx参数: {load_args}")
         ret = rknn.load_onnx(**load_args)
