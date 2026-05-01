@@ -35,7 +35,25 @@
             background: rgba(0, 210, 255, 0.1);
             border: 1px solid #00d2ff;
         }
-        .status-icon { font-size: 36px; margin-bottom: 10px; }
+        .status-icon { 
+            font-size: 36px; 
+            margin-bottom: 10px; 
+        }
+        /* 动态spinner */
+        .spinner-icon {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 15px;
+            border: 5px solid rgba(0, 210, 255, 0.2);
+            border-top-color: #00d2ff;
+            border-right-color: rgba(0, 210, 255, 0.5);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
         .status-title { font-size: 20px; margin-bottom: 5px; }
         .status-message { color: rgba(255, 255, 255, 0.7); font-size: 14px; }
         .progress-bar {
@@ -108,11 +126,11 @@
 </head>
 <body>
     <div class="container">
-        <h1>ONNX → RKNN 转换</h1>
+        <h1>ONNX → RKNN 转换 <small style="font-size:12px;color:rgba(255,255,255,0.3)">v2.2</small></h1>
         
         <div class="card">
             <div class="status" id="statusBox">
-                <div class="status-icon" id="statusIcon">⏳</div>
+                <div class="spinner-icon" id="statusIcon"></div>
                 <div class="status-title" id="statusTitle">正在转换</div>
                 <div class="status-message" id="statusMsg"></div>
             </div>
@@ -189,7 +207,12 @@
         }
         
         function setStatusCompleted() {
-            statusIcon.textContent = '✓';
+            statusIcon.style.animation = 'none';
+            statusIcon.innerHTML = '✓';
+            statusIcon.style.fontSize = '40px';
+            statusIcon.style.border = 'none';
+            statusIcon.style.width = 'auto';
+            statusIcon.style.height = 'auto';
             statusTitle.textContent = '转换成功';
             statusBox.style.background = 'rgba(52, 199, 89, 0.2)';
             statusBox.style.borderColor = '#34c759';
@@ -204,7 +227,13 @@
         }
         
         function setStatusFailed(msg) {
-            statusIcon.textContent = '✗';
+            statusIcon.style.animation = 'none';
+            statusIcon.innerHTML = '✗';
+            statusIcon.style.fontSize = '40px';
+            statusIcon.style.border = 'none';
+            statusIcon.style.width = 'auto';
+            statusIcon.style.height = 'auto';
+            statusIcon.style.color = '#ff3b30';
             statusTitle.textContent = '转换失败';
             statusMsg.textContent = msg;
             statusBox.style.background = 'rgba(255, 59, 48, 0.2)';
