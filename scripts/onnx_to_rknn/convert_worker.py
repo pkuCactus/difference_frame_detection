@@ -157,10 +157,6 @@ def convert_onnx_to_rknn(
             print(f"[LOG] ⚠️ 如果ONNX模型输入是固定shape，此参数将被忽略")
             print(f"[LOG] input_size_list参数: {load_args['input_size_list']}")
         
-        # batch_size需要在build时通过rknn_batch_size设置
-        batch_size = config.get("batch_size", 1)
-        print(f"[LOG] 批次大小: {batch_size}")
-        
         print(f"[LOG] 加载ONNX: {onnx_path}")
         print(f"[LOG] load_onnx参数: {load_args}")
         ret = rknn.load_onnx(**load_args)
@@ -179,14 +175,14 @@ def convert_onnx_to_rknn(
         else:
             print("[LOG] 不启用量化")
 
-        # batch_size通过rknn_batch_size参数设置（必须>1才会生效）
+        # batch_size - 只有>1时才传递rknn_batch_size参数
         batch_size = config.get("batch_size", 1)
-        if batch_size and batch_size > 1:
+        if batch_size > 1:
             build_args["rknn_batch_size"] = batch_size
-            print(f"[LOG] 批次大小: {batch_size}")
+            print(f"[LOG] 设置批次大小: {batch_size}")
         else:
-            print(f"[LOG] 批次大小: {batch_size} (默认为1，不传递rknn_batch_size参数)")
-
+            print(f"[LOG] 批次大小: {batch_size} (默认值，不传递参数)")
+        
         print(f"[LOG] build参数: {build_args}")
         print("[LOG] 开始构建RKNN模型...")
         ret = rknn.build(**build_args)
