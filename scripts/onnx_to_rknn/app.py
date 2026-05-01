@@ -71,12 +71,14 @@ def convert_direct():
     
     # 优先使用已上传的文件（通过前端JavaScript上传）
     uploaded_filename = request.form.get("uploaded_filename", "")
+    display_filename = ""
     if uploaded_filename:
         filepath = UPLOAD_DIR / secure_filename(uploaded_filename)
         if not filepath.exists():
             flash("已上传的文件不存在，请重新上传", "error")
             return redirect(url_for("index"))
         task_id = uploaded_filename.split("_")[0]  # 从文件名提取task_id
+        display_filename = filepath.name
     else:
         # 兜底：直接通过form上传（兼容旧流程）
         if "file" not in request.files:
@@ -97,6 +99,7 @@ def convert_direct():
         filename = f"{task_id}_{safe_name}"
         filepath = UPLOAD_DIR / filename
         file.save(filepath)
+        display_filename = file.filename or filepath.name
 
     config = ConversionConfig(platform=platform)
 
@@ -135,7 +138,7 @@ def convert_direct():
     task.output_path = str(output_path)
 
     task.status = "converting"
-    task.add_log(f"文件: {file.filename}")
+    task.add_log(f"文件: {display_filename}")
     task.add_log(f"平台: {platform}")
 
     import threading
