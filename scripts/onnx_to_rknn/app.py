@@ -31,6 +31,7 @@ from modules import (
     ConversionTask,
     venv_manager,
     tasks,
+    _tasks_lock,
     _add_task,
     _resolve_dataset_path,
     get_onnx_info,
@@ -194,6 +195,81 @@ def api_task(task_id: str):
     if not task:
         return jsonify({"error": "任务不存在"}), 404
     return jsonify(task.to_dict())
+
+
+@app.route("/api/history")
+def api_history():
+    """获取转换历史记录"""
+    history = []
+    for tid, task in tasks.items():
+        item = {
+            "task_id": tid,
+            "platform": task.config.platform,
+            "status": task.status,
+            "start_time": task.start_time.isoformat(),
+            "end_time": task.end_time.isoformat() if task.end_time else None,
+            "onnx_file": Path(task.onnx_path).name if task.onnx_path else None,
+            "rknn_file": Path(task.output_path).name if task.output_path else None,
+            "rknn_exists": Path(task.output_path).exists() if task.output_path else False,
+        }
+        if task.end_time:
+            duration = (task.end_time - task.start_time).total_seconds()
+            item["duration_sec"] = round(duration, 2)
+        if task.output_path and Path(task.output_path).exists():
+            item["rknn_size_mb"] = round(Path(task.output_path).stat().st_size / (1024 * 1024), 2)
+        history.append(item)
+    
+    # 按时间倒序排列
+    history.sort(key=lambda x: x["start_time"], reverse=True)
+    return jsonify(history)
+
+
+@app.route("/api/delete/<task_id>", methods=["DELETE"])
+def api_delete(task_id: str):
+    """删除转换任务及其文件"""
+    task = tasks.get(task_id)
+    if not task:
+        return jsonify({"success": False, "error": "任务不存在"}), 404
+    
+    deleted_files = []
+    
+    # 删除ONNX文件
+    if task.onnx_path:
+        try:
+            if Path(task.onnx_path).exists():
+                Path(task.onnx_path).unlink()
+                deleted_files.append(task.onnx_path)
+        except Exception as e:
+            pass
+    
+    # 删除RKNN文件
+    if task.output_path:
+        try:
+            if Path(task.output_path).exists():
+                Path(task.output_path).unlink()
+                deleted_files.append(task.output_path)
+        except Exception as e:
+            pass
+    
+    # 从任务列表移除
+    with _tasks_lock:
+        tasks.pop(task_id, None)
+    
+    return jsonify({
+        "success": True,
+        "message": f"已删除任务 {task_id}",
+        "deleted_files": deleted_files
+    })
+
+
+@app.route("/history")
+def history_page():
+    """历史记录页面"""
+    return render_template(
+        "history.html",
+        platforms=CHIP_PLATFORMS,
+        venv_status=venv_manager.get_all_status()
+    )
 
 
 @app.route("/api/upload_and_parse", methods=["POST"])

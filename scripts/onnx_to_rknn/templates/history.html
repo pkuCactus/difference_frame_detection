@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>转换历史 - ONNX转RKNN</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2em;
+            color: #00d2ff;
+        }
+        .nav {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .nav a {
+            color: #00d2ff;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.1);
+            margin: 0 5px;
+        }
+        .nav a:hover { background: rgba(255,255,255,0.2); }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        th {
+            color: #00d2ff;
+            font-weight: 600;
+            background: rgba(0, 210, 255, 0.1);
+        }
+        tr:hover { background: rgba(255,255,255,0.05); }
+        .status-completed { color: #34c759; }
+        .status-failed { color: #ff3b30; }
+        .status-converting { color: #ffc107; }
+        .btn {
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            margin-right: 5px;
+        }
+        .btn-download {
+            background: linear-gradient(90deg, #34c759, #30b350);
+            color: #fff;
+        }
+        .btn-delete {
+            background: rgba(255, 59, 48, 0.2);
+            color: #ff3b30;
+            border: 1px solid #ff3b30;
+        }
+        .btn-delete:hover { background: rgba(255, 59, 48, 0.3); }
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255,255,255,0.5);
+        }
+        .loading-spinner {
+            text-align: center;
+            padding: 40px;
+        }
+        .spinner {
+            font-size: 40px;
+            animation: hourglass-flip 1.5s ease-in-out infinite;
+        }
+        @keyframes hourglass-flip {
+            0%, 100% { transform: rotate(0deg); opacity: 1; }
+            50% { transform: rotate(180deg); opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>转换历史记录 <small style="font-size:12px;color:rgba(255,255,255,0.3)">v2.1</small></h1>
+        
+        <div class="nav">
+            <a href="/">← 返回主页</a>
+        </div>
+        
+        <div class="card">
+            <div class="loading-spinner" id="loading">
+                <div class="spinner">⏳</div>
+                <div style="margin-top:10px;color:rgba(255,255,255,0.6)">加载中...</div>
+            </div>
+            
+            <table id="historyTable" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>任务ID</th>
+                        <th>状态</th>
+                        <th>平台</th>
+                        <th>ONNX文件</th>
+                        <th>RKNN文件</th>
+                        <th>大小</th>
+                        <th>耗时</th>
+                        <th>开始时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody"></tbody>
+            </table>
+            
+            <div class="empty" id="emptyMsg" style="display:none;">
+                暂无转换记录
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        async function loadHistory() {
+            try {
+                const resp = await fetch('/api/history');
+                const data = await resp.json();
+                
+                document.getElementById('loading').style.display = 'none';
+                
+                if (data.length === 0) {
+                    document.getElementById('emptyMsg').style.display = 'block';
+                    return;
+                }
+                
+                document.getElementById('historyTable').style.display = 'table';
+                const tbody = document.getElementById('historyBody');
+                tbody.innerHTML = '';
+                
+                data.forEach(item => {
+                    const row = document.createElement('tr');
+                    
+                    // 状态样式
+                    let statusClass = '';
+                    let statusText = item.status;
+                    if (item.status === 'completed') {
+                        statusClass = 'status-completed';
+                        statusText = '✓ 完成';
+                    } else if (item.status === 'failed') {
+                        statusClass = 'status-failed';
+                        statusText = '✗ 失败';
+                    } else if (item.status === 'converting') {
+                        statusClass = 'status-converting';
+                        statusText = '⏳ 转换中';
+                    }
+                    
+                    // 操作按钮
+                    let actions = '';
+                    if (item.status === 'completed' && item.rknn_exists) {
+                        actions = `<a href="/download/${item.task_id}" class="btn btn-download">下载</a>`;
+                    }
+                    actions += `<button class="btn btn-delete" onclick="deleteTask('${item.task_id}')">删除</button>`;
+                    
+                    row.innerHTML = `
+                        <td>${item.task_id}</td>
+                        <td class="${statusClass}">${statusText}</td>
+                        <td>${item.platform || '-'}</td>
+                        <td>${item.onnx_file || '-'}</td>
+                        <td>${item.rknn_file || '-'}</td>
+                        <td>${item.rknn_size_mb ? item.rknn_size_mb + ' MB' : '-'}</td>
+                        <td>${item.duration_sec ? item.duration_sec + 's' : '-'}</td>
+                        <td>${new Date(item.start_time).toLocaleString()}</td>
+                        <td>${actions}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+            } catch (e) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('emptyMsg').style.display = 'block';
+                document.getElementById('emptyMsg').textContent = '加载失败: ' + e.message;
+            }
+        }
+        
+        async function deleteTask(taskId) {
+            if (!confirm(`确认删除任务 ${taskId} 及其相关文件？`)) {
+                return;
+            }
+            
+            try {
+                const resp = await fetch(`/api/delete/${taskId}`, { method: 'DELETE' });
+                const result = await resp.json();
+                
+                if (result.success) {
+                    alert(result.message);
+                    loadHistory();
+                } else {
+                    alert('删除失败: ' + result.error);
+                }
+            } catch (e) {
+                alert('删除失败: ' + e.message);
+            }
+        }
+        
+        loadHistory();
+    </script>
+</body>
+</html>
