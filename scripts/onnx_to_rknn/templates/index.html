@@ -179,6 +179,17 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
+        .spinner-small {
+            width: 16px;
+            height: 16px;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 6px;
+            border: 2px solid rgba(0, 210, 255, 0.2);
+            border-top-color: #00d2ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 <body>
@@ -369,8 +380,8 @@
         async function handleFile(f) {
             if(!f.name.toLowerCase().endsWith('.onnx')) { alert('请上传.onnx文件'); return; }
             
-            // 显示上传中
-            fileName.textContent = '⏳ 上传中: ' + f.name + ' (' + (f.size/1024/1024).toFixed(2) + ' MB)';
+            // 显示上传中 - 使用动态spinner
+            fileName.innerHTML = '<span class="spinner-small"></span>上传中: ' + f.name + ' (' + (f.size/1024/1024).toFixed(2) + ' MB)';
             loading.classList.add('show');
             loadingText.textContent = '正在上传并解析模型...';
             
