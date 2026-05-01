@@ -64,6 +64,21 @@
         .upload-text { font-size: 14px; }
         .upload-text small { color: rgba(255,255,255,0.5); }
         .file-name { color: #34c759; font-size: 13px; margin-top: 8px; }
+        .model-info {
+            background: rgba(0, 150, 255, 0.1);
+            border: 1px solid rgba(0, 150, 255, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 12px;
+            display: none;
+        }
+        .model-info.show { display: block; }
+        .model-info-title { color: #00d2ff; font-weight: bold; margin-bottom: 8px; }
+        .model-info-item { margin: 4px 0; }
+        .model-info-item span { color: rgba(255,255,255,0.7); }
+        .model-info-dynamic { color: #34c759; }
+        .model-info-fixed { color: #ffc107; }
         .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
         .form-row > * { flex: 1; }
         label { display: block; font-size: 13px; margin-bottom: 5px; color: rgba(255,255,255,0.8); }
@@ -78,36 +93,43 @@
         }
         select option { background: #1a1a2e; color: #fff; }
         input::placeholder { color: rgba(255,255,255,0.4); }
-.hint { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 3px; }
-.tooltip { position: relative; display: inline-block; }
-.tooltip .tooltip-icon { 
-    font-size: 14px; 
-    color: rgba(255,255,255,0.5); 
-    cursor: help; 
-    margin-left: 4px;
-}
-.tooltip .tooltip-text {
-    visibility: hidden;
-    width: 200px;
-    background-color: rgba(0,0,0,0.85);
-    color: #fff;
-    text-align: left;
-    padding: 8px 10px;
-    border-radius: 6px;
-    font-size: 12px;
-    position: absolute;
-    z-index: 1;
-    bottom: 125%;
-    left: 50%;
-    margin-left: -100px;
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-.tooltip:hover .tooltip-text {
-    visibility: visible;
-    opacity: 1;
-}
-.checkbox-item { display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 6px; }
+        input:disabled {
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.5);
+            cursor: not-allowed;
+        }
+        .hint { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 3px; }
+        .hint-warning { color: rgba(255,200,0,0.8); }
+        .hint-ok { color: rgba(52,199,89,0.8); }
+        .tooltip { position: relative; display: inline-block; }
+        .tooltip .tooltip-icon { 
+            font-size: 14px; 
+            color: rgba(255,255,255,0.5); 
+            cursor: help; 
+            margin-left: 4px;
+        }
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 200px;
+            background-color: rgba(0,0,0,0.85);
+            color: #fff;
+            text-align: left;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        .checkbox-item { display: flex; align-items: center; gap: 6px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 6px; }
         .checkbox-item input { width: 16px; height: 16px; }
         .collapsible { display: none; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px; margin-top: 8px; }
         .collapsible.show { display: block; }
@@ -157,31 +179,41 @@
         <div class="flow">
             <div class="flow-item">1. 上传 ONNX</div>
             <div class="flow-arrow">→</div>
-            <div class="flow-item">2. 选择平台</div>
+            <div class="flow-item">2. 查看模型信息</div>
             <div class="flow-arrow">→</div>
-            <div class="flow-item">3. 配置参数</div>
+            <div class="flow-item">3. 选择平台</div>
             <div class="flow-arrow">→</div>
-            <div class="flow-item">4. 自动转换</div>
+            <div class="flow-item">4. 配置参数</div>
             <div class="flow-arrow">→</div>
-            <div class="flow-item">5. 下载 RKNN</div>
+            <div class="flow-item">5. 开始转换</div>
         </div>
         
         <form action="/convert_direct" method="post" enctype="multipart/form-data" id="form">
+            <!-- 隐藏字段存储已上传的文件名 -->
+            <input type="hidden" name="uploaded_filename" id="uploadedFilename" value="">
+            
             <div class="card">
                 <div class="row">
-                    <div class="col" style="flex: 0.4;">
-                        <label>上传 ONNX 文件</label>
+                    <div class="col" style="flex: 0.5;">
+                        <label>步骤1: 上传 ONNX 文件 <span style="color: rgba(255,200,0,0.8);">*必须先上传</span></label>
                         <div class="upload-box" id="upload">
                             <div class="upload-icon">📁</div>
                             <div class="upload-text">点击上传 <small>(≤500MB)</small></div>
                             <input type="file" name="file" id="file" accept=".onnx" required>
                             <div class="file-name" id="fileName"></div>
                         </div>
+                        <div class="model-info" id="modelInfo">
+                            <div class="model-info-title">📊 模型信息</div>
+                            <div class="model-info-item">输入名称: <span id="inputName">-</span></div>
+                            <div class="model-info-item">输入尺寸: <span id="inputShape">-</span></div>
+                            <div class="model-info-item">Shape类型: <span id="shapeType">-</span></div>
+                            <div class="model-info-item">数据类型: <span id="inputDtype">-</span></div>
+                        </div>
                     </div>
                     <div class="col">
-                        <label>目标平台 *</label>
-                        <select name="platform" id="platform" required>
-                            <option value="">选择芯片</option>
+                        <label>步骤2: 目标平台 *</label>
+                        <select name="platform" id="platform" required disabled>
+                            <option value="">请先上传ONNX文件</option>
                             <optgroup label="rknn-toolkit2">
                                 {% for name, info in platforms.items() %}
                                 {% if info.toolkit == 'rknn-toolkit2' %}
@@ -201,35 +233,36 @@
                         
                         <div class="form-row" style="margin-top: 12px;">
                             <div>
-                                <label>输入高度 <span class="tooltip"><span class="tooltip-icon">❓</span><span class="tooltip-text">仅对动态shape的ONNX模型有效！固定shape模型无法修改输入尺寸。留空则使用ONNX原始尺寸。</span></span></label>
-                                <input type="number" name="input_height" placeholder="如: 448">
-                                <div class="hint" style="color: rgba(255,200,0,0.8);">⚠️ 仅支持动态shape模型</div>
+                                <label>输入高度</label>
+                                <input type="number" name="input_height" id="inputHeight" placeholder="上传模型后自动填充" disabled>
+                                <div class="hint" id="heightHint">等待上传模型...</div>
                             </div>
                             <div>
-                                <label>输入宽度 <span class="tooltip"><span class="tooltip-icon">❓</span><span class="tooltip-text">仅对动态shape的ONNX模型有效！固定shape模型无法修改输入尺寸。留空则使用ONNX原始尺寸。</span></span></label>
-                                <input type="number" name="input_width" placeholder="如: 832">
-                                <div class="hint" style="color: rgba(255,200,0,0.8);">⚠️ 仅支持动态shape模型</div>
+                                <label>输入宽度</label>
+                                <input type="number" name="input_width" id="inputWidth" placeholder="上传模型后自动填充" disabled>
+                                <div class="hint" id="widthHint">等待上传模型...</div>
                             </div>
                             <div>
                                 <label>批次 <span class="tooltip"><span class="tooltip-icon">❓</span><span class="tooltip-text">一次推理处理多少张图片，默认为1。增大批次可提高吞吐量，但会增加内存消耗和模型大小。</span></span></label>
-                                <input type="number" name="batch_size" value="1" min="1">
+                                <input type="number" name="batch_size" id="batchSize" value="1" min="1" disabled>
+                                <div class="hint" id="batchHint">等待上传模型...</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div class="card">
+            <div class="card" id="optionalCard" style="opacity: 0.5;">
                 <div class="row">
                     <div class="col">
                         <label>预处理 (可选)</label>
                         <div class="form-row">
                             <div>
-                                <input type="text" name="mean_values" placeholder="均值: 0, 0, 0">
+                                <input type="text" name="mean_values" id="meanValues" placeholder="均值: 0, 0, 0" disabled>
                                 <div class="hint">R,G,B 逗号分隔</div>
                             </div>
                             <div>
-                                <input type="text" name="std_values" placeholder="标准差: 1, 1, 1">
+                                <input type="text" name="std_values" id="stdValues" placeholder="标准差: 1, 1, 1" disabled>
                                 <div class="hint">R,G,B 逗号分隔</div>
                             </div>
                         </div>
@@ -237,18 +270,18 @@
                     <div class="col">
                         <label>量化 (可选)</label>
                         <div class="checkbox-item">
-                            <input type="checkbox" name="do_quantization" id="quant" onchange="toggleQuant()">
+                            <input type="checkbox" name="do_quantization" id="quant" onchange="toggleQuant()" disabled>
                             <label for="quant" style="margin: 0;">启用 INT8 量化</label>
                         </div>
                         <div class="collapsible" id="quantOpts">
-                            <input type="text" name="dataset_path" placeholder="数据集txt路径">
+                            <input type="text" name="dataset_path" id="datasetPath" placeholder="数据集txt路径" disabled>
                             <div class="form-row" style="margin-top: 8px;">
-                                <select name="quantized_dtype">
+                                <select name="quantized_dtype" id="quantDtype" disabled>
                                     {% for dtype, desc in quantized_dtypes.items() %}
                                     <option value="{{ dtype }}">{{ desc }}</option>
                                     {% endfor %}
                                 </select>
-                                <select name="quantized_algorithm">
+                                <select name="quantized_algorithm" id="quantAlgo" disabled>
                                     {% for algo, desc in quantized_algorithms.items() %}
                                     <option value="{{ algo }}">{{ desc }}</option>
                                     {% endfor %}
@@ -259,13 +292,13 @@
                     <div class="col">
                         <label>优化 (可选)</label>
                         <div class="form-row">
-                            <select name="optimization_level">
+                            <select name="optimization_level" id="optLevel" disabled>
                                 {% for level, desc in optimization_levels.items() %}
                                 <option value="{{ level }}" {% if level == 2 %}selected{% endif %}>{{ desc }}</option>
                                 {% endfor %}
                             </select>
                             <div class="checkbox-item">
-                                <input type="checkbox" name="single_core_mode" id="single">
+                                <input type="checkbox" name="single_core_mode" id="single" disabled>
                                 <label for="single" style="margin: 0;">单核</label>
                             </div>
                         </div>
@@ -280,7 +313,7 @@
     <div class="loading" id="loading">
         <div class="loading-box">
             <div class="loading-icon">⏳</div>
-            <div>正在转换...</div>
+            <div id="loadingText">正在上传并解析模型...</div>
         </div>
     </div>
     
@@ -293,7 +326,16 @@
         const platformStatus = document.getElementById('platformStatus');
         const submitBtn = document.getElementById('submitBtn');
         const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loadingText');
         const form = document.getElementById('form');
+        const modelInfo = document.getElementById('modelInfo');
+        const inputHeight = document.getElementById('inputHeight');
+        const inputWidth = document.getElementById('inputWidth');
+        const batchSize = document.getElementById('batchSize');
+        const optionalCard = document.getElementById('optionalCard');
+        
+        let uploadedFilename = null;
+        let modelData = null;
         
         upload.addEventListener('click', () => fileInput.click());
         upload.addEventListener('dragover', e => { e.preventDefault(); upload.style.borderColor = '#00d2ff'; });
@@ -301,11 +343,101 @@
         upload.addEventListener('drop', e => { e.preventDefault(); upload.style.borderColor = ''; if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
         fileInput.addEventListener('change', () => { if(fileInput.files[0]) handleFile(fileInput.files[0]); });
         
-        function handleFile(f) {
+        async function handleFile(f) {
             if(!f.name.toLowerCase().endsWith('.onnx')) { alert('请上传.onnx文件'); return; }
-            fileName.textContent = '✓ ' + f.name + ' (' + (f.size/1024/1024).toFixed(2) + ' MB)';
-            upload.classList.add('has-file');
-            checkSubmit();
+            
+            // 显示上传中
+            fileName.textContent = '⏳ 上传中: ' + f.name + ' (' + (f.size/1024/1024).toFixed(2) + ' MB)';
+            loading.classList.add('show');
+            loadingText.textContent = '正在上传并解析模型...';
+            
+            // 上传文件到临时目录并解析
+            const formData = new FormData();
+            formData.append('file', f);
+            
+            try {
+                const resp = await fetch('/api/upload_and_parse', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await resp.json();
+                
+                if(!result.success) {
+                    alert('解析失败: ' + result.error);
+                    fileName.textContent = '❌ 解析失败';
+                    loading.classList.remove('show');
+                    return;
+                }
+                
+                // 保存解析结果
+                uploadedFilename = result.filename;
+                modelData = result.model_info;
+                
+                // 设置隐藏字段
+                document.getElementById('uploadedFilename').value = uploadedFilename;
+                
+                // 更新界面显示
+                fileName.textContent = '✓ ' + f.name + ' (' + (f.size/1024/1024).toFixed(2) + ' MB)';
+                upload.classList.add('has-file');
+                
+                // 显示模型信息
+                modelInfo.classList.add('show');
+                document.getElementById('inputName').textContent = modelData.input_name || '-';
+                document.getElementById('inputShape').textContent = modelData.input_shape || '-';
+                document.getElementById('shapeType').textContent = modelData.is_dynamic ? '动态 (可修改)' : '固定 (不可修改)';
+                document.getElementById('shapeType').className = modelData.is_dynamic ? 'model-info-dynamic' : 'model-info-fixed';
+                document.getElementById('inputDtype').textContent = modelData.input_dtype || '-';
+                
+                // 根据是否动态shape设置宽高输入框
+                if(modelData.height && modelData.width) {
+                    inputHeight.value = modelData.height;
+                    inputWidth.value = modelData.width;
+                    
+                    if(modelData.is_dynamic) {
+                        // 动态shape - 可以修改
+                        inputHeight.disabled = false;
+                        inputWidth.disabled = false;
+                        document.getElementById('heightHint').textContent = '✅ 动态shape，可修改高度';
+                        document.getElementById('heightHint').className = 'hint hint-ok';
+                        document.getElementById('widthHint').textContent = '✅ 动态shape，可修改宽度';
+                        document.getElementById('widthHint').className = 'hint hint-ok';
+                    } else {
+                        // 固定shape - 不能修改
+                        inputHeight.disabled = true;
+                        inputWidth.disabled = true;
+                        document.getElementById('heightHint').textContent = '⚠️ 固定shape，无法修改';
+                        document.getElementById('heightHint').className = 'hint hint-warning';
+                        document.getElementById('widthHint').textContent = '⚠️ 固定shape，无法修改';
+                        document.getElementById('widthHint').className = 'hint hint-warning';
+                    }
+                }
+                
+                // 启用其他输入框
+                platform.disabled = false;
+                platform.querySelector('option[value=""]').textContent = '选择芯片';
+                batchSize.disabled = false;
+                document.getElementById('batchHint').textContent = '默认为1，可增大以提高吞吐量';
+                
+                // 启用可选参数区域
+                optionalCard.style.opacity = '1';
+                document.getElementById('meanValues').disabled = false;
+                document.getElementById('stdValues').disabled = false;
+                document.getElementById('quant').disabled = false;
+                document.getElementById('datasetPath').disabled = false;
+                document.getElementById('quantDtype').disabled = false;
+                document.getElementById('quantAlgo').disabled = false;
+                document.getElementById('optLevel').disabled = false;
+                document.getElementById('single').disabled = false;
+                
+                loading.classList.remove('show');
+                checkSubmit();
+                
+            } catch(e) {
+                alert('上传失败: ' + e.message);
+                fileName.textContent = '❌ 上传失败';
+                loading.classList.remove('show');
+            }
         }
         
         platform.addEventListener('change', () => {
@@ -321,14 +453,19 @@
         });
         
         function checkSubmit() {
-            submitBtn.disabled = !(fileInput.files.length > 0 && platform.value);
+            submitBtn.disabled = !(uploadedFilename && platform.value);
         }
         
         function toggleQuant() {
             document.getElementById('quantOpts').classList.toggle('show', document.getElementById('quant').checked);
         }
         
-        form.addEventListener('submit', () => loading.classList.add('show'));
+        form.addEventListener('submit', () => {
+            loading.classList.add('show');
+            loadingText.textContent = '正在转换...';
+        });
+        
+        // 初始状态
         checkSubmit();
     </script>
 </body>

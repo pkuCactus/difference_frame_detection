@@ -81,11 +81,37 @@ def get_onnx_info(onnx_path: str) -> dict:
         for outp in model.graph.output:
             shape = [d.dim_value if d.dim_value > 0 else "?" for d in outp.type.tensor_type.shape.dim]
             outputs.append({"name": outp.name, "shape": shape})
+        
+        # 判断是否动态shape（输入中有?或0）
+        is_dynamic = False
+        first_input_shape = None
+        first_input_name = None
+        input_dtype = "float32"
+        height = None
+        width = None
+        
+        if inputs:
+            first_input = inputs[0]
+            first_input_name = first_input["name"]
+            first_input_shape = first_input["shape"]
+            # 检查是否有动态维度
+            is_dynamic = "?" in str(first_input_shape) or 0 in first_input_shape
+            # 解析height和width（NCHW格式: [batch, channel, height, width]）
+            if len(first_input_shape) >= 4:
+                height = first_input_shape[2] if first_input_shape[2] not in ["?", 0] else None
+                width = first_input_shape[3] if first_input_shape[3] not in ["?", 0] else None
+        
         return {
             "inputs": inputs,
             "outputs": outputs,
             "opset": model.opset_import[0].version if model.opset_import else None,
             "ir_version": model.ir_version,
+            "is_dynamic": is_dynamic,
+            "input_name": first_input_name,
+            "input_shape": str(first_input_shape) if first_input_shape else None,
+            "input_dtype": input_dtype,
+            "height": height,
+            "width": width,
         }
     except Exception as e:
         return {"error": str(e)}

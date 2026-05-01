@@ -60,30 +60,43 @@ def index():
 
 @app.route("/convert_direct", methods=["POST"])
 def convert_direct():
-    if "file" not in request.files:
-        flash("未选择文件", "error")
-        return redirect(url_for("index"))
-
-    file = request.files["file"]
     platform = request.form.get("platform", "")
-
-    if file.filename == "" or not platform:
-        flash("参数不完整", "error")
+    if not platform:
+        flash("未选择平台", "error")
         return redirect(url_for("index"))
-
-    if not file.filename.lower().endswith(".onnx"):
-        flash("只支持ONNX格式文件", "error")
-        return redirect(url_for("index"))
-
+    
     if platform not in CHIP_PLATFORMS:
         flash(f"不支持的平台: {platform}", "error")
         return redirect(url_for("index"))
-
-    task_id = str(uuid.uuid4())[:8]
-    safe_name = secure_filename(file.filename or "") or "model.onnx"
-    filename = f"{task_id}_{safe_name}"
-    filepath = UPLOAD_DIR / filename
-    file.save(filepath)
+    
+    # 优先使用已上传的文件（通过前端JavaScript上传）
+    uploaded_filename = request.form.get("uploaded_filename", "")
+    if uploaded_filename:
+        filepath = UPLOAD_DIR / secure_filename(uploaded_filename)
+        if not filepath.exists():
+            flash("已上传的文件不存在，请重新上传", "error")
+            return redirect(url_for("index"))
+        task_id = uploaded_filename.split("_")[0]  # 从文件名提取task_id
+    else:
+        # 兜底：直接通过form上传（兼容旧流程）
+        if "file" not in request.files:
+            flash("未选择文件", "error")
+            return redirect(url_for("index"))
+        
+        file = request.files["file"]
+        if file.filename == "":
+            flash("文件名为空", "error")
+            return redirect(url_for("index"))
+        
+        if not file.filename.lower().endswith(".onnx"):
+            flash("只支持ONNX格式文件", "error")
+            return redirect(url_for("index"))
+        
+        task_id = str(uuid.uuid4())[:8]
+        safe_name = secure_filename(file.filename or "") or "model.onnx"
+        filename = f"{task_id}_{safe_name}"
+        filepath = UPLOAD_DIR / filename
+        file.save(filepath)
 
     config = ConversionConfig(platform=platform)
 
@@ -178,6 +191,44 @@ def api_task(task_id: str):
     if not task:
         return jsonify({"error": "任务不存在"}), 404
     return jsonify(task.to_dict())
+
+
+@app.route("/api/upload_and_parse", methods=["POST"])
+def api_upload_and_parse():
+    if "file" not in request.files:
+        return jsonify({"success": False, "error": "未选择文件"}), 400
+    
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"success": False, "error": "文件名为空"}), 400
+    
+    if not file.filename.lower().endswith(".onnx"):
+        return jsonify({"success": False, "error": "只支持.onnx文件"}), 400
+    
+    # 保存文件
+    task_id = str(uuid.uuid4())[:8]
+    safe_name = secure_filename(file.filename or "") or "model.onnx"
+    filename = f"{task_id}_{safe_name}"
+    filepath = UPLOAD_DIR / filename
+    file.save(filepath)
+    
+    # 解析ONNX信息
+    model_info = get_onnx_info(str(filepath))
+    
+    if "error" in model_info:
+        # 解析失败，删除文件
+        try:
+            filepath.unlink()
+        except:
+            pass
+        return jsonify({"success": False, "error": f"解析ONNX失败: {model_info['error']}"}), 400
+    
+    return jsonify({
+        "success": True,
+        "filename": filename,
+        "filepath": str(filepath),
+        "model_info": model_info
+    })
 
 
 @app.route("/api/info/<path:filepath>")
