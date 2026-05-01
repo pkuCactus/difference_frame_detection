@@ -76,6 +76,7 @@ def convert_onnx_to_rknn(
             print(f"[LOG] 标准差归一化: {std_values}")
 
         # 量化参数 - RKNN Toolkit 2 支持的量化类型: w8a8, w8a16, w16a16i, w16a16i_dfp, w4a16
+        # RKNN Toolkit 2 支持的量化算法: normal, mmse, kl_divergence, gdq
         do_quantization = config.get("do_quantization", False)
         if do_quantization:
             # 旧版量化类型映射到RKNN Toolkit 2格式
@@ -92,11 +93,23 @@ def convert_onnx_to_rknn(
             }
             quantized_dtype_input = config.get("quantized_dtype", "w8a8")
             quantized_dtype = old_to_new_dtype.get(quantized_dtype_input, "w8a8")
-            quantized_algorithm = config.get("quantized_algorithm", "normal")
+            
+            # 旧版量化算法映射到RKNN Toolkit 2格式
+            old_to_new_algo = {
+                "normal": "normal",
+                "mm": "mmse",  # mm 映射到 mmse
+                "mmse": "mmse",
+                "kl_divergence": "kl_divergence",
+                "kl": "kl_divergence",  # kl 映射到 kl_divergence
+                "gdq": "gdq",
+            }
+            quantized_algo_input = config.get("quantized_algorithm", "normal")
+            quantized_algorithm = old_to_new_algo.get(quantized_algo_input, "normal")
+            
             rknn_config["quantized_dtype"] = quantized_dtype
             rknn_config["quantized_algorithm"] = quantized_algorithm
             print(f"[LOG] 量化类型: {quantized_dtype} (输入: {quantized_dtype_input})")
-            print(f"[LOG] 量化算法: {quantized_algorithm}")
+            print(f"[LOG] 量化算法: {quantized_algorithm} (输入: {quantized_algo_input})")
 
         # 优化参数
         optimization_level = config.get("optimization_level", 2)

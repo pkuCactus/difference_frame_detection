@@ -97,8 +97,9 @@ QUANTIZED_DTYPES = {
 
 QUANTIZED_ALGORITHMS = {
     "normal": "普通量化 (快速)",
-    "mm": "MinMax量化",
+    "mmse": "MMSE量化 (最小均方误差)",
     "kl_divergence": "KL散度量化 (精度高，速度慢)",
+    "gdq": "GDQ量化 (梯度分布量化)",
 }
 
 OPTIMIZATION_LEVELS = {
