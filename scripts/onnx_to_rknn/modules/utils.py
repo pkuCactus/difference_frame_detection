@@ -70,49 +70,90 @@ def _add_task(task_id: str, task: ConversionTask) -> None:
 
 
 def get_onnx_info(onnx_path: str) -> dict:
-    """解析ONNX模型信息"""
+    """解析ONNX模型信息 - 在rknn-toolkit2虚拟环境中运行"""
+    from modules import venv_manager
+    import subprocess
+    import json
+    
+    toolkit_type = "rknn-toolkit2"
+    python_path = venv_manager._get_python_path(toolkit_type)
+    
+    # 直接使用虚拟环境Python，不检查是否就绪（假设已初始化）
+    parse_script = '''
+import sys
+import json
+try:
+    import onnx
+    model = onnx.load(sys.argv[1])
+    inputs = []
+    for inp in model.graph.input:
+        shape = [d.dim_value if d.dim_value > 0 else "?" for d in inp.type.tensor_type.shape.dim]
+        inputs.append({"name": inp.name, "shape": shape})
+    outputs = []
+    for outp in model.graph.output:
+        shape = [d.dim_value if d.dim_value > 0 else "?" for d in outp.type.tensor_type.shape.dim]
+        outputs.append({"name": outp.name, "shape": shape})
+    
+    is_dynamic = False
+    first_input_shape = None
+    first_input_name = None
+    height = None
+    width = None
+    
+    if inputs:
+        first_input = inputs[0]
+        first_input_name = first_input["name"]
+        first_input_shape = first_input["shape"]
+        is_dynamic = "?" in str(first_input_shape) or 0 in first_input_shape
+        if len(first_input_shape) >= 4:
+            height = first_input_shape[2] if first_input_shape[2] not in ["?", 0] else None
+            width = first_input_shape[3] if first_input_shape[3] not in ["?", 0] else None
+    
+    print(json.dumps({
+        "inputs": inputs,
+        "outputs": outputs,
+        "opset": model.opset_import[0].version if model.opset_import else None,
+        "ir_version": model.ir_version,
+        "is_dynamic": is_dynamic,
+        "input_name": first_input_name,
+        "input_shape": str(first_input_shape) if first_input_shape else None,
+        "height": height,
+        "width": width,
+    }))
+except Exception as e:
+    print(json.dumps({"error": str(e)}))
+'''
+    
     try:
-        import onnx
-        model = onnx.load(onnx_path)
-        inputs = []
-        for inp in model.graph.input:
-            shape = [d.dim_value if d.dim_value > 0 else "?" for d in inp.type.tensor_type.shape.dim]
-            inputs.append({"name": inp.name, "shape": shape})
-        outputs = []
-        for outp in model.graph.output:
-            shape = [d.dim_value if d.dim_value > 0 else "?" for d in outp.type.tensor_type.shape.dim]
-            outputs.append({"name": outp.name, "shape": shape})
+        result = subprocess.run(
+            [str(python_path), "-c", parse_script, onnx_path],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
         
-        is_dynamic = False
-        first_input_shape = None
-        first_input_name = None
-        input_dtype = "float32"
-        height = None
-        width = None
+        if result.returncode != 0 or not result.stdout.strip():
+            # 如果失败，尝试prepare_env后再运行
+            success, msg = venv_manager.prepare_env(toolkit_type)
+            if not success:
+                return {"error": f"虚拟环境未就绪: {msg}"}
+            result = subprocess.run(
+                [str(python_path), "-c", parse_script, onnx_path],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if result.returncode != 0:
+                return {"error": f"解析失败: {result.stderr}"}
         
-        if inputs:
-            first_input = inputs[0]
-            first_input_name = first_input["name"]
-            first_input_shape = first_input["shape"]
-            is_dynamic = "?" in str(first_input_shape) or 0 in first_input_shape
-            if len(first_input_shape) >= 4:
-                height = first_input_shape[2] if first_input_shape[2] not in ["?", 0] else None
-                width = first_input_shape[3] if first_input_shape[3] not in ["?", 0] else None
+        return json.loads(result.stdout.strip())
         
-        return {
-            "inputs": inputs,
-            "outputs": outputs,
-            "opset": model.opset_import[0].version if model.opset_import else None,
-            "ir_version": model.ir_version,
-            "is_dynamic": is_dynamic,
-            "input_name": first_input_name,
-            "input_shape": str(first_input_shape) if first_input_shape else None,
-            "input_dtype": input_dtype,
-            "height": height,
-            "width": width,
-        }
+    except subprocess.TimeoutExpired:
+        return {"error": "解析超时"}
+    except json.JSONDecodeError as e:
+        return {"error": f"解析结果JSON错误: {e}"}
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": f"解析异常: {e}"}
 
 
 def run_conversion_in_venv_async(task: ConversionTask):
