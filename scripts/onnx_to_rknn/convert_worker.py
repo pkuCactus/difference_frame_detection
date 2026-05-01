@@ -144,15 +144,22 @@ def convert_onnx_to_rknn(
             load_args["inputs"] = [input_name]
             print(f"[LOG] 输入节点: {input_name}")
 
-        # 输入尺寸
+        # 输入尺寸 - RKNN Toolkit2要求格式: [[channel, height, width]] (NCHW)
         input_size = config.get("input_size")
         if input_size:
-            # input_size格式: [height, width]，需要添加channel
             channel = 3  # RGB/BGR 3通道
-            # RKNN API要求input_size_list格式: [height, width, channel]
-            full_size = [input_size[0], input_size[1], channel]
-            load_args["input_size_list"] = [full_size]
-            print(f"[LOG] 输入尺寸: {input_size[0]}x{input_size[1]}x{channel} (HxWxC)")
+            # RKNN API要求的NCHW格式: [channel, height, width]
+            # 注意：input_size是用户输入的[height, width]
+            nchw_size = [channel, input_size[0], input_size[1]]
+            load_args["input_size_list"] = [nchw_size]
+            print(f"[LOG] 输入尺寸(NCHW): {channel}x{input_size[0]}x{input_size[1]} (CxHxW)")
+            print(f"[LOG] input_size_list参数: {load_args['input_size_list']}")
+        
+        # batch_size需要在load_onnx时通过inputs指定，或在build时通过rknn_batch_size指定
+        batch_size = config.get("batch_size", 1)
+        if batch_size > 1:
+            # batch_size通过build的rknn_batch_size参数设置
+            print(f"[LOG] 批次大小将在build时设置为: {batch_size}")
         
         print(f"[LOG] 加载ONNX: {onnx_path}")
         print(f"[LOG] load_onnx参数: {load_args}")
@@ -167,17 +174,20 @@ def convert_onnx_to_rknn(
 
         dataset_path = config.get("dataset_path")
         if do_quantization and dataset_path:
-            build_args["do_quantization"] = True
             build_args["dataset"] = dataset_path
             print(f"[LOG] 启用量化，数据集: {dataset_path}")
         else:
             print("[LOG] 不启用量化")
 
+        # batch_size通过rknn_batch_size参数设置（必须>1才会生效）
         batch_size = config.get("batch_size", 1)
         if batch_size and batch_size > 1:
             build_args["rknn_batch_size"] = batch_size
             print(f"[LOG] 批次大小: {batch_size}")
+        else:
+            print(f"[LOG] 批次大小: {batch_size} (默认为1，不传递rknn_batch_size参数)")
 
+        print(f"[LOG] build参数: {build_args}")
         print("[LOG] 开始构建RKNN模型...")
         ret = rknn.build(**build_args)
         if ret != 0:
