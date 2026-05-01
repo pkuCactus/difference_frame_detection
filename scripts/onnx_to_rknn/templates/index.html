@@ -208,6 +208,11 @@
                             <div class="model-info-item">输入尺寸: <span id="inputShape">-</span></div>
                             <div class="model-info-item">Shape类型: <span id="shapeType">-</span></div>
                             <div class="model-info-item">数据类型: <span id="inputDtype">-</span></div>
+                            <div class="model-info-item" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.2);">
+                                <span style="color: rgba(255,255,255,0.6); font-size: 11px;">
+                                    💡 提示: 只有动态shape模型才能修改输入尺寸和batch大小。固定shape模型的输入参数不可修改。
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <div class="col">
@@ -413,11 +418,23 @@
                     }
                 }
                 
+                // 根据是否动态shape设置batch_size输入框
+                if(modelData.is_dynamic) {
+                    // 动态shape - batch可修改
+                    batchSize.disabled = false;
+                    document.getElementById('batchHint').textContent = '✅ 动态shape，可设置大于1的批次';
+                    document.getElementById('batchHint').className = 'hint hint-ok';
+                } else {
+                    // 固定shape - batch不可修改
+                    batchSize.disabled = true;
+                    batchSize.value = 1;
+                    document.getElementById('batchHint').textContent = '⚠️ 固定shape，batch不可修改';
+                    document.getElementById('batchHint').className = 'hint hint-warning';
+                }
+                
                 // 启用其他输入框
                 platform.disabled = false;
                 platform.querySelector('option[value=""]').textContent = '选择芯片';
-                batchSize.disabled = false;
-                document.getElementById('batchHint').textContent = '默认为1，可增大以提高吞吐量';
                 
                 // 启用可选参数区域
                 optionalCard.style.opacity = '1';
