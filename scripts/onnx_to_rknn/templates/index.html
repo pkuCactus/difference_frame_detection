@@ -169,6 +169,7 @@
         
         /* 主要spinner - 更大更醒目 */
         .spinner {
+            position: relative;
             width: 50px;
             height: 50px;
             margin: 0 auto 15px;
@@ -176,16 +177,18 @@
             border-top-color: #00d2ff;
             border-right-color: rgba(0, 210, 255, 0.4);
             border-radius: 50%;
-            animation: spin 0.8s ease-in-out infinite;
+            animation: spin 0.8s linear infinite;
             box-shadow: 0 0 15px rgba(0, 210, 255, 0.3);
         }
         
-        /* 双环spinner效果 */
+        /* 双环spinner效果 - 内环反向旋转 */
         .spinner::after {
             content: '';
             position: absolute;
-            width: 35px;
-            height: 35px;
+            top: 7px;
+            left: 7px;
+            width: 36px;
+            height: 36px;
             border: 3px solid rgba(0, 210, 255, 0.1);
             border-bottom-color: rgba(0, 210, 255, 0.5);
             border-radius: 50%;
@@ -221,7 +224,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>ONNX → RKNN 转换</h1>
+        <h1>ONNX → RKNN 转换 <small style="font-size:12px;color:rgba(255,255,255,0.3)">v2.1</small></h1>
         <div class="env-bar">
             {% if venv_status %}
             {% for toolkit_type, status in venv_status.items() %}
@@ -534,6 +537,7 @@
         }
         
         form.addEventListener('submit', () => {
+            console.log('[DEBUG] Form submitted, showing loading spinner v2.1');
             loading.classList.add('show');
             loadingText.textContent = '正在转换...';
         });
