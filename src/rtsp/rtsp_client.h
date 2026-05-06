@@ -36,9 +36,9 @@ public:
     void SetFrameCallback(FrameCallback callback) override;
     bool Reconnect() override;
     
-    double GetFps() const;
-    int GetWidth() const;
-    int GetHeight() const;
+    double GetFps() const override;
+    int GetWidth() const override;
+    int GetHeight() const override;
     
 private:
     std::string url_;
