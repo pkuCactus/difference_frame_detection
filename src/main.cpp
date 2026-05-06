@@ -55,6 +55,7 @@ void printUsage(const char* programName) {
     std::cout << std::endl;
     std::cout << "Commands:" << std::endl;
     std::cout << "  detect <image> [config]  单图检测调试,结果保存到outputs/" << std::endl;
+    std::cout << "    --model <path>         指定模型路径(覆盖配置文件)" << std::endl;
     std::cout << std::endl;
     std::cout << "Examples:" << std::endl;
     std::cout << "  " << programName << " config/config.yaml" << std::endl;
@@ -73,6 +74,7 @@ struct CmdLineArgs {
     bool showHelp = false;
     std::string subCommand;
     std::string imagePath;
+    std::string modelPath;
 };
 
 CmdLineArgs parseArgs(int argc, char* argv[]) {
@@ -87,6 +89,8 @@ CmdLineArgs parseArgs(int argc, char* argv[]) {
             args.rtspUrl = argv[++i];
         } else if (arg == "--test-duration" && i + 1 < argc) {
             args.testDuration = std::atoi(argv[++i]);
+        } else if (arg == "--model" && i + 1 < argc) {
+            args.modelPath = argv[++i];
         } else if (arg == "-h" || arg == "--help") {
             args.showHelp = true;
         } else if (arg[0] != '-') {
@@ -233,6 +237,10 @@ int runDetectDebug(const CmdLineArgs& args) {
         Logger::GetInstance().Init("outputs/detect_debug.log", "DEBUG");
 
         Config config = Config::FromFile(args.configPath);
+
+        if (!args.modelPath.empty()) {
+            config.localDetection.modelPath = args.modelPath;
+        }
 
         std::cout << "========================================" << std::endl;
         std::cout << "Detection Model Debug" << std::endl;

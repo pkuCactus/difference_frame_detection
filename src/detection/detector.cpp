@@ -1,7 +1,8 @@
 #include "detection/detector.h"
 #include <iostream>
 
-namespace diff_det {
+namespace {
+
 constexpr int OBJ_CLASS_NUM = 80;
 constexpr int PROP_BOX_SIZE = 5 + OBJ_CLASS_NUM;
 constexpr int MAX_DETECTIONS = 64;
@@ -12,20 +13,24 @@ const std::vector<std::vector<int32_t>> ANCHORS = {
     {116, 90, 156, 198, 373, 326}
 };
 
-inline float Sigmoid(float x) {
+inline float Sigmoid(float x)
+{
     return 1.0f / (1.0f + expf(-x));
 }
 
-inline float DeqntAffineToF32(int8_t qnt, int32_t zp, float scale) {
+inline float DeqntAffineToF32(int8_t qnt, int32_t zp, float scale)
+{
     return static_cast<float>(qnt - zp) * scale;
 }
 
-inline int8_t QntF32ToAffine(float f32, int32_t zp, float scale) {
+inline int8_t QntF32ToAffine(float f32, int32_t zp, float scale)
+{
     float dstVal = (f32 / scale) + zp;
     return static_cast<int8_t>(std::max(-128.0f, std::min(127.0f, dstVal)));
 }
 
-inline int ClampInt(float val, int32_t min, int32_t max) {
+inline int ClampInt(float val, int32_t min, int32_t max)
+{
     int32_t tVal = static_cast<int32_t>(val);
     if (tVal > max) {
         return max;
@@ -35,6 +40,43 @@ inline int ClampInt(float val, int32_t min, int32_t max) {
     }
     return tVal;
 }
+
+inline float DequantIfNeeded(float value, int32_t /*zp*/, float /*scale*/)
+{
+    return value;
+}
+
+inline float DequantIfNeeded(int8_t value, int32_t zp, float scale)
+{
+    return DeqntAffineToF32(value, zp, scale);
+}
+
+template<typename T>
+T GetConfThreshold(float confThreshold, int32_t /*zp*/, float /*scale*/);
+
+template<>
+float GetConfThreshold<float>(float confThreshold, int32_t /*zp*/, float /*scale*/)
+{
+    return confThreshold;
+}
+
+template<>
+int8_t GetConfThreshold<int8_t>(float confThreshold, int32_t zp, float scale)
+{
+    return QntF32ToAffine(confThreshold, zp, scale);
+}
+
+bool WantFloat(rknn_tensor_type type)
+{
+    if (type == RKNN_TENSOR_FLOAT16) {
+        return true;
+    }
+    return false;
+}
+
+}
+
+namespace diff_det {
 
 Detector::Detector(const LocalDetectionConfig& config) : config_(config)
 {
@@ -217,43 +259,31 @@ void Detector::SetupInputs(const cv::Mat& frame)
     LOG_DEBUG("Set inputs successful");
 }
 
-bool WantFloat(rknn_tensor_type type)
-{
-    if (type == RKNN_TENSOR_FLOAT16) {
-        return true;
-    }
-    return false;
-}
-
-void Detector::PostProcess(const cv::Mat& frame, const std::vector<rknn_output> outputs, float scaleW, float scaleH, int32_t offsetW,
+template<typename T>
+void Detector::PostProcessGeneral(const cv::Mat& frame, const std::vector<rknn_output> outputs, float scaleW, float scaleH, int32_t offsetW,
     int32_t offsetH, std::vector<BoundingBox>& boxes)
 {
-    LOG_DEBUG("PostProcess ...");
+    LOG_DEBUG("PostProcessGeneral ...");
     for (int32_t outIdx = 0; outIdx < outputNum_; ++outIdx) {
         int32_t anchorNum = ANCHORS[outIdx].size() / 2;
         rknn_tensor_attr& attr = outputAttrs_[outIdx];
-        int8_t confThresh = QntF32ToAffine(config_.confThreshold, attr.zp, attr.scale);
-        LOG_DEBUG("Conf threshold: " + std::to_string(config_.confThreshold) + " after quant: " + std::to_string(confThresh));
-        int8_t* data = reinterpret_cast<int8_t*>(outputs[outIdx].buf);
+        T* data = reinterpret_cast<T*>(outputs[outIdx].buf);
+        T confThresh = GetConfThreshold<T>(config_.confThreshold, attr.zp, attr.scale);
         int32_t gridH = attr.dims[attr.n_dims - 2];
         int32_t gridW = attr.dims[attr.n_dims - 1];
         int32_t gridLen = gridH * gridW;
-        LOG_DEBUG("Process the outputs [" + std::to_string(outIdx) + "]: " + "achor num: " + std::to_string(anchorNum) + ", " +
-            "shape: " + std::to_string(attr.dims[0]) + "x" + std::to_string(attr.dims[1]) + "x" + std::to_string(attr.dims[2]) +
-            "x" + std::to_string(attr.dims[3]));
         for (int32_t anchorIdx = 0; anchorIdx < anchorNum; ++anchorIdx) {
             for (int32_t i = 0; i < gridH; ++i) {
                 for (int32_t j = 0; j < gridW; ++j) {
                     int32_t idx = anchorIdx * PROP_BOX_SIZE * gridLen + i * attr.dims[3] + j;
-                    int8_t objConf = data[idx + 4 * gridLen];
-                    // std::cout << anchorIdx << " " << i << " " << j << " " << idx << " " << (int32_t)objConf << " " << (int32_t)confThresh << std::endl;
+                    T objConf = data[idx + 4 * gridLen];
                     if (objConf < confThresh) {
                         continue;
                     }
+                    T classProb = data[idx + 5 * gridLen];
                     int32_t label = 0;
-                    int8_t classProb = 0.0f;
                     // 当前只检测人
-                    for (int32_t c = 0; c < 1; ++c) {
+                    for (int32_t c = 1; c < 1; ++c) {
                         if (data[idx + (5 + c) * gridLen] > classProb) {
                             classProb = data[idx + (5 + c) * gridLen];
                             label = c;
@@ -262,27 +292,23 @@ void Detector::PostProcess(const cv::Mat& frame, const std::vector<rknn_output> 
                     if (classProb < confThresh) {
                         continue;
                     }
-                    float xCenter = (DeqntAffineToF32(data[idx], attr.zp, attr.scale) * 2 - 0.5f + j) * (modelInputWidth_ / gridW);
-                    float yCenter = (DeqntAffineToF32(data[idx + gridLen], attr.zp, attr.scale) * 2 - 0.5f + i) * (modelInputHeight_ / gridH);
-                    float w = powf(DeqntAffineToF32(data[idx + 2 * gridLen], attr.zp, attr.scale) * 2, 2) * ANCHORS[outIdx][anchorIdx * 2];
-                    float h = powf(DeqntAffineToF32(data[idx + 3 * gridLen], attr.zp, attr.scale) * 2, 2) * ANCHORS[outIdx][anchorIdx * 2 + 1];
-                    // std::cout << xCenter << " " << yCenter << " " << w << " " << h << std::endl;
+                    float xCenter = (DequantIfNeeded(data[idx], attr.zp, attr.scale) * 2 - 0.5f + j) * (modelInputWidth_ / gridW);
+                    float yCenter = (DequantIfNeeded(data[idx + gridLen], attr.zp, attr.scale) * 2 - 0.5f + i) * (modelInputHeight_ / gridH);
+                    float w = powf(DequantIfNeeded(data[idx + 2 * gridLen], attr.zp, attr.scale) * 2, 2) * ANCHORS[outIdx][anchorIdx * 2];
+                    float h = powf(DequantIfNeeded(data[idx + 3 * gridLen], attr.zp, attr.scale) * 2, 2) * ANCHORS[outIdx][anchorIdx * 2 + 1];
                     float x1 = xCenter - w / 2;
                     float y1 = yCenter - h / 2;
                     float x2 = xCenter + w / 2;
                     float y2 = yCenter + h / 2;
-                    // std::cout << x1 << " " << y1 << " " << x2 << " " << y2 << std::endl;
-                    float score = DeqntAffineToF32(objConf, attr.zp, attr.scale) * DeqntAffineToF32(classProb, attr.zp, attr.scale);
-
+                    float score = DequantIfNeeded(objConf, attr.zp, attr.scale) * DequantIfNeeded(classProb, attr.zp, attr.scale);
                     BoundingBox box(x1, y1, x2, y2, score, label);
-                    // std::cout << scaleW << " " << scaleH << " " << offsetW << " " << offsetH << std::endl;
                     // Adjust box to original image scale
                     box.x1 = ClampInt((box.x1 - offsetW) / scaleW, 0, frame.cols - 1);
                     box.y1 = ClampInt((box.y1 - offsetH) / scaleH, 0, frame.rows - 1);
                     box.x2 = ClampInt((box.x2 - offsetW) / scaleW, 0, frame.cols - 1);
                     box.y2 = ClampInt((box.y2 - offsetH) / scaleH, 0, frame.rows - 1);
-                    // std::cout << box.x1 << " " << box.y1 << " " << box.x2 << " " << box.y2 << std::endl;
                     boxes.push_back(box);
+                    LOG_DEBUG("Valid box: " + std::to_string(box.x1) + " " + std::to_string(box.y1) + " " + std::to_string(box.x2) + " " + std::to_string(box.y2) + " " + std::to_string(box.conf) + " " + std::to_string(box.label));
                 }
             }
         }
@@ -290,6 +316,16 @@ void Detector::PostProcess(const cv::Mat& frame, const std::vector<rknn_output> 
     LOG_DEBUG("Total boxes before nms: " + std::to_string(boxes.size()));
     boxes = Nms(boxes);
     LOG_DEBUG("Boxes remain after nms: " + std::to_string(boxes.size()));
+}
+
+void Detector::PostProcess(const cv::Mat& frame, const std::vector<rknn_output> outputs, float scaleW, float scaleH, int32_t offsetW,
+    int32_t offsetH, std::vector<BoundingBox>& boxes)
+{
+    if (WantFloat(outputAttrs_[0].type)) {
+        PostProcessGeneral<float>(frame, outputs, scaleW, scaleH, offsetW, offsetH, boxes);
+    } else {
+        PostProcessGeneral<int8_t>(frame, outputs, scaleW, scaleH, offsetW, offsetH, boxes);
+    }
 }
 
 std::vector<BoundingBox> Detector::Nms(std::vector<BoundingBox>& boxes)

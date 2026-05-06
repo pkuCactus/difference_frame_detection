@@ -42,6 +42,9 @@ private:
     cv::Mat PreProcess(const cv::Mat& frame, float& scaleX, float& scaleY, int32_t& offsetX, int32_t& offsetY);
     void PostProcess(const cv::Mat& frame, const std::vector<rknn_output> outputs, float scaleW, float scaleH, int32_t offsetW,
         int32_t offsetH, std::vector<BoundingBox>& boxes);
+    template<typename T>
+    void PostProcessGeneral(const cv::Mat& frame, const std::vector<rknn_output> outputs, float scaleW, float scaleH, int32_t offsetW,
+        int32_t offsetH, std::vector<BoundingBox>& boxes);
     std::vector<BoundingBox> Nms(std::vector<BoundingBox> &boxes);
 
 private:
